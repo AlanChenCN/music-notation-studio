@@ -5,7 +5,7 @@ import { createGrandStaffGeometry, staffLineSteps } from '../data/staffGeometry'
 import { notationSegments } from './notation'
 import { measureBeats, scoreLength, type ScoreDocument } from './scoreModel'
 
-interface Props { readOnly?: boolean; score: ScoreDocument; selected: string | null; beat: number; playing: boolean; previewPitches: number[]; previewDuration: number; insertionIndex: number; onSelect: (id: string) => void; onEnd: () => void }
+interface Props { followLeft?: boolean; livePitches?: number[]; liveAtCursor?: boolean; readOnly?: boolean; score: ScoreDocument; selected: string | null; beat: number; playing: boolean; previewPitches: number[]; previewDuration: number; insertionIndex: number; onSelect: (id: string) => void; onEnd: () => void }
 
 const { staffBottomY, noteY } = createGrandStaffGeometry(199, 6)
 const staffTopY = noteY('treble', 8)
@@ -17,8 +17,9 @@ const eventFrameBottomY = staffBottomEdgeY + 28
 const beatFraction = (value: number) => ({ .25: ['1', '4'], .5: ['1', '2'] } as Record<number, [string, string] | undefined>)[value]
 const isMeasureStart = (beat: number, beatsPerMeasure: number) => Math.abs(beat / beatsPerMeasure - Math.round(beat / beatsPerMeasure)) < .00001
 
-export default function ScoreStaff({ score, selected, beat, playing, previewPitches, previewDuration, insertionIndex, onSelect, onEnd, readOnly = false }: Props) {
+export default function ScoreStaff({ score, selected, beat, playing, previewPitches, previewDuration, insertionIndex, onSelect, onEnd, readOnly = false, followLeft = false, livePitches = [], liveAtCursor = false }: Props) {
   const paperRef = useRef<HTMLDivElement>(null)
+  const followPosition = useRef(0)
   const beatsPerMeasure = measureBeats(score.timeSignature)
   const { segments, widths, xs, offset, width, eventById, previewAnchorX, previewLayoutWidth, editCursorX } = useMemo(() => {
     const segments = notationSegments(score)
@@ -42,7 +43,7 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
   const playX = activeIndex < 0 ? offset : xs[activeIndex] - 8 + (beat - segments[activeIndex].beat) / segments[activeIndex].duration * widths[activeIndex]
   useEffect(() => {
     const paper = paperRef.current
-    if (!paper || playing) return
+    if (!paper || playing || followLeft) return
     const svg = paper.querySelector('svg')
     if (!svg) return
     const position = editCursorX * (svg.clientWidth / width)
@@ -52,13 +53,14 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
       const edge = position < safeLeft ? paper.clientWidth * .2 : paper.clientWidth * .8
       paper.scrollTo({ left: Math.max(0, position - edge), behavior: 'smooth' })
     }
-  }, [editCursorX, playing, width])
+  }, [editCursorX, playing, width, followLeft])
   useEffect(() => {
     const paper = paperRef.current
-    if (!paper || !playing) return
+    if (!paper || (!playing && !followLeft)) return
     const svg = paper.querySelector('svg')
     if (!svg) return
     const position = playX * (svg.clientWidth / width)
+    if (followLeft) { followPosition.current = playX; paper.scrollLeft = position; return }
     const safeLeft = paper.scrollLeft + paper.clientWidth * .2
     const safeRight = paper.scrollLeft + paper.clientWidth * .8
     if (position < safeLeft || position > safeRight) {
@@ -67,7 +69,17 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
       // directly keeps the cursor at the boundary without stacking smooth-scroll animations.
       paper.scrollLeft = Math.max(0, position - edge)
     }
-  }, [playX, playing, width])
+  }, [playX, playing, width, followLeft])
+  useEffect(() => {
+    const paper = paperRef.current
+    if (!followLeft || !paper) return
+    const observer = new ResizeObserver(() => {
+      const svg = paper.querySelector('svg')
+      if (svg) paper.scrollLeft = followPosition.current * svg.clientWidth / width
+    })
+    observer.observe(paper)
+    return () => observer.disconnect()
+  }, [followLeft, width])
   const notation = useMemo(() => <g>
       {(['treble', 'bass'] as StaffName[]).map(staff => <g key={staff} stroke="var(--theme-staff-color)" strokeWidth="1">
         {staffLineSteps.map(step => <line key={step} x1="20" x2={width - 20} y1={noteY(staff, step)} y2={noteY(staff, step)} />)}
@@ -83,7 +95,7 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
       {!segments.length && !previewPitches.length && <text x="180" y="181" fill="var(--theme-text-color)" fontSize="18">在底部琴键试音，然后点击「写入音符」</text>}
       {segments.map((segment, index) => {
         const slotStartX = xs[index] - 8
-        const x = slotStartX + widths[index] / 2
+        const x = followLeft ? slotStartX : slotStartX + widths[index] / 2
         const chosen = selected === segment.eventId
         const event = eventById.get(segment.eventId)!
         const label = `${segment.beat + 1} 拍：${segment.pitches.map(pitch => midiNumberToPianoNote(pitch)?.name).join('、') || '休止符'}，${event.duration} 拍`
@@ -160,12 +172,28 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
         <text x={offset + 25} y={(staffTopY + staffBottomEdgeY) / 2 + 8} fill="var(--theme-accent-color)" fontSize="24">+</text>
       </g>
       }
-    </g>, [readOnly, segments, widths, xs, offset, width, eventById, selected, previewAnchorX, previewLayoutWidth, previewPitches, previewDuration, beatsPerMeasure, score.timeSignature, onSelect, onEnd])
+    </g>, [followLeft, readOnly, segments, widths, xs, offset, width, eventById, selected, previewAnchorX, previewLayoutWidth, previewPitches, previewDuration, beatsPerMeasure, score.timeSignature, onSelect, onEnd])
   return <div ref={paperRef} className="score-paper" aria-label="乐谱五线谱，可横向滚动">
+    <div style={followLeft ? { width, paddingLeft: '20%', paddingRight: '80%', boxSizing: 'content-box' } : undefined}>
     <svg width={width} height="400" viewBox={`0 0 ${width} 400`} role="group" aria-label={`${score.timeSignature[0]}/${score.timeSignature[1]} 乐谱`}>
       {notation}
-      <line className="score-edit-cursor" x1={editCursorX} x2={editCursorX} y1="48" y2="365" pointerEvents="none" />
+      {!followLeft && <line className="score-edit-cursor" x1={editCursorX} x2={editCursorX} y1="48" y2="365" pointerEvents="none" />}
       {scoreLength(score) > 0 && <line className={playing ? 'score-playback-cursor score-playback-cursor--active' : 'score-playback-cursor'} x1={playX} x2={playX} y1="48" y2="365" pointerEvents="none" />}
+      {!!livePitches.length && <g className="score-live-notes" aria-label={`实奏音符：${livePitches.map(p => midiNumberToPianoNote(p)?.name).join('、')}`} fill="none" stroke="var(--theme-accent-color)" strokeWidth="2.5" pointerEvents="none">
+        {livePitches.map((pitch, index) => {
+          const note = midiNumberToPianoNote(pitch)
+          if (!note) return null
+          const position = getStaffNotePosition(note)
+          const x = (liveAtCursor ? playX : previewAnchorX + previewLayoutWidth / 2) + 18 + (index % 2) * 10
+          const y = noteY(position.staff, position.staffStep)
+          return <g key={pitch} data-live-pitch={pitch}>
+            {getLedgerLineSteps(position.staffStep).map(step => <line key={step} x1={x - 13} x2={x + 13} y1={noteY(position.staff, step)} y2={noteY(position.staff, step)} />)}
+            <ellipse cx={x} cy={y} rx="9" ry="6" transform={`rotate(-15 ${x} ${y})`} />
+            {note.type === 'black' && <text x={x - 23} y={y + 5} fontSize="17" fill="var(--theme-accent-color)" stroke="none">♯</text>}
+          </g>
+        })}
+      </g>}
     </svg>
+    </div>
   </div>
 }

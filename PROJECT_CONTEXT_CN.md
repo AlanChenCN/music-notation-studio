@@ -20,7 +20,7 @@ Music Notation Studio 是一个基于 React + TypeScript 开发的 Web 音乐记
 
 ## v0.6.0：Trainer 乐谱跟练（开发中）
 
-Trainer 以 Editor 的布局与谱面为基础，新增 Editor 当前乐谱副本交接、本地保存乐谱载入、自由速度音高跟练、起止小节、循环及成绩反馈。随机练习 / 自由弹奏继续独立保留。
+Trainer 以 Editor 的布局与谱面为基础，新增 Editor 当前乐谱副本交接、本地保存乐谱载入、自由速度逐音练习与时间轴跟弹、实奏谱面音符、左侧固定跟弹轴、起止小节、循环及成绩反馈。随机练习 / 自由弹奏继续独立保留。
 
 `src/practice/scorePractice.ts` 管理音高匹配、松键推进和统计，`ScoreTrainer.tsx` 管理跟练界面与区间，`PracticeTransport.tsx` 共用随机短句和乐谱示范回放。App 按工作区与练习来源分配实奏输入；示范声音仍经过 playback 路由，不计练习成绩。练习副本不改写 Editor；文件模型仍为 version 1。
 

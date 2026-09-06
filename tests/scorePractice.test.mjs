@@ -37,3 +37,35 @@ test('empty and rest-only scores cannot start; separate sources must both releas
   const c=new ScorePractice(); c.load(score([[]])); c.start(); assert.equal(c.getSnapshot().running,false)
   c.load(score([[60],[60]])); c.start(); c.press('mouse',60); c.press('midi',60); c.release('mouse'); assert.equal(c.getSnapshot().index,0); c.release('midi'); assert.equal(c.getSnapshot().index,1)
 })
+
+test('timeline count-in and time progression continue through wrong notes and rests', () => {
+  let now=0; const c=new ScorePractice(()=>now); c.load({...score([[60],[],[62]]),tempo:60}); c.setMode('timeline'); c.start()
+  assert.equal(c.getSnapshot().beat,-4)
+  play(c,[65]); assert.equal(c.getSnapshot().errors,0)
+  now=4100; play(c,[65]); assert.equal(c.getSnapshot().errors,1); assert.equal(c.getSnapshot().running,true)
+  now=5100; c.tick(); assert.equal(c.getSnapshot().missed,1); assert.ok(Math.abs(c.getSnapshot().beat - 1.1) < 1e-9)
+  play(c,[64]); assert.equal(c.getSnapshot().errors,2)
+  now=6200; play(c,[62]); now=7100; c.tick()
+  assert.equal(c.getSnapshot().running,false); assert.equal(c.getSnapshot().completed,2); assert.equal(c.getSnapshot().firstTry,1)
+})
+test('timeline needs a new articulation for repeated notes; chords need simultaneous complete pitches', () => {
+  let now=0; const c=new ScorePractice(()=>now); c.load({...score([[60],[60],[60,64]]),tempo:60}); c.setMode('timeline'); c.start()
+  now=4100; c.press('a',60); now=6100; c.tick(); assert.equal(c.getSnapshot().firstTry,1); assert.equal(c.getSnapshot().missed,1)
+  c.press('b',64); now=7100; c.tick(); assert.equal(c.getSnapshot().firstTry,2); assert.equal(c.getSnapshot().missed,1)
+})
+test('timeline pause and tempo changes retain beat even in trailing rests', () => {
+  let now=0; const c=new ScorePractice(()=>now); c.load({...score([[60],[],[]]),tempo:60}); c.setMode('timeline'); c.start()
+  now=5500; c.pause(); assert.equal(c.getSnapshot().beat,1.5); now=10000; c.setTempo(120); c.start(); now=10500; c.tick()
+  assert.equal(c.getSnapshot().beat,2.5); assert.equal(c.getSnapshot().completed,1)
+  now=11000; c.tick(); assert.equal(c.getSnapshot().running,false)
+})
+test('timeline range, mid-score count-in and looping preserve the previous result', () => {
+  let now=0; const c=new ScorePractice(()=>now); c.load({...score([[60],[62],[64],[65],[67]]),tempo:60}); c.setMode('timeline'); c.configure(2,2,true); c.start()
+  assert.equal(c.getSnapshot().startBeat,4); now=3000; play(c,[65]); assert.equal(c.getSnapshot().errors,0)
+  now=4100; play(c,[67]); now=5100; c.tick(); assert.equal(c.getSnapshot().rounds,1); assert.equal(c.getSnapshot().beat,0); assert.match(c.getSnapshot().result,/命中 1/)
+  c.configure(1,2,false); c.reset(2); assert.equal(c.getSnapshot().startBeat,2); c.start(); now=6000; play(c,[60]); assert.equal(c.getSnapshot().errors,0)
+})
+test('live pitch feedback exists while paused and persists until all owners release', () => {
+  const c=new ScorePractice(); c.load(score()); c.press('mouse',60); c.press('midi',60); c.press('other',64)
+  assert.deepEqual(c.getSnapshot().livePitches,[60,64]); c.release('mouse'); assert.deepEqual(c.getSnapshot().livePitches,[60,64]); c.release('midi'); assert.deepEqual(c.getSnapshot().livePitches,[64]); c.release('other'); assert.deepEqual(c.getSnapshot().livePitches,[])
+})

@@ -16,3 +16,6 @@
 
 .trainer-source button, .trainer-entry button { min-height: 34px; padding: 6px 10px; }
 .trainer-entry input { height: 34px; padding: 6px 10px; }
+
+.trainer-mode select { min-height: 34px; padding: 6px 10px; }
+.trainer-live-status { color: var(--theme-accent-color); font-size: 13px; font-variant-numeric: tabular-nums; }
