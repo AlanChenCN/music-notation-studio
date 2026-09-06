@@ -11,9 +11,9 @@
   --content-max-width: 1920px;
   --piano-white-height: clamp(140px, 15vh, 170px);
   --grand-staff-height: clamp(460px, 52vh, 560px);
-  --input-controls-height: 68px;
+  --input-controls-height: 44px;
   --piano-dock-height: calc(
-    var(--piano-white-height) + var(--input-controls-height) + 32px
+    var(--piano-white-height) + var(--input-controls-height) + 24px
   );
 
   padding: 24px 24px calc(24px + var(--piano-dock-height));
@@ -566,7 +566,7 @@
 
   height: var(--piano-dock-height);
 
-  padding: 8px 24px;
+  padding: 6px 24px;
 
   box-sizing: border-box;
 
@@ -582,7 +582,7 @@
 
   flex-direction: column;
 
-  gap: 8px;
+  gap: 4px;
 
   width: min(100%, var(--content-max-width));
 
@@ -600,7 +600,7 @@
 
   align-items: center;
 
-  gap: 8px;
+  gap: 4px;
 
   justify-content: space-between;
 
@@ -620,7 +620,7 @@
 
   align-items: center;
 
-  gap: 8px;
+  gap: 6px;
 
   min-width: 0;
 
@@ -660,21 +660,15 @@
 
   justify-content: center;
 
-  gap: 1px;
+  gap: 0;
 
-  width: 214px;
+  width: auto;
 
-  height: 60px;
+  height: 40px;
 
-  padding: 4px 10px;
+  padding: 0;
 
   box-sizing: border-box;
-
-  border: 1px solid var(--theme-border-color);
-
-  border-radius: 6px;
-
-  background: var(--theme-surface-background);
 
   line-height: 1.1;
 
@@ -686,17 +680,17 @@
 
   align-items: center;
 
-  gap: 8px;
+  gap: 4px;
 
 }
 
 .keyboard-mapping-button {
 
-  height: 32px;
+  height: 36px;
 
-  min-height: 32px;
+  min-height: 36px;
 
-  padding: 0 10px;
+  padding: 0 8px;
 
   border-radius: 6px;
 
@@ -887,6 +881,68 @@
 .theme-note-mode-list {
 
   grid-template-columns: repeat(2, minmax(0, 1fr));
+
+}
+
+.input-controls .dock-option-button,
+.input-controls .dock-status-button {
+
+  flex-direction: row;
+
+  width: auto;
+
+  min-height: 36px;
+
+  padding: 6px 10px;
+
+  gap: 6px;
+
+}
+
+.input-controls .dock-option-button {
+
+  min-width: 112px;
+
+}
+
+.input-controls .dock-status-button {
+
+  min-width: 72px;
+
+}
+
+.status-indicator {
+
+  color: var(--theme-border-color);
+
+  font-size: 10px;
+
+  line-height: 1;
+
+}
+
+.dock-status-button[data-active="true"] .status-indicator,
+.status-indicator[data-status="on"] {
+
+  color: var(--theme-status-success);
+
+  text-shadow: 0 0 5px color-mix(in srgb, var(--theme-status-success) 60%, transparent);
+
+}
+
+.dock-status-button[data-connection-state="connecting"] .status-indicator {
+
+  color: var(--theme-status-warning);
+
+  text-shadow: 0 0 5px color-mix(in srgb, var(--theme-status-warning) 60%, transparent);
+
+}
+
+.dock-status-button[data-connection-state="connected"] .status-indicator {
+
+  color: var(--theme-status-success);
+
+  text-shadow: 0 0 5px color-mix(in srgb, var(--theme-status-success) 60%, transparent);
 
 }
 
@@ -1472,6 +1528,34 @@
   box-sizing: border-box;
 
   text-align: left;
+
+}
+
+.midi-unified-panel {
+
+  display: grid;
+
+  gap: 16px;
+
+}
+
+.midi-unified-section + .midi-unified-section {
+
+  padding-top: 16px;
+
+  border-top: 1px solid var(--theme-border-color);
+
+}
+
+.midi-unified-section h3,
+.midi-monitor-panel h3,
+.bluetooth-midi-panel h3 {
+
+  margin: 0 0 8px;
+
+  color: var(--theme-heading-color);
+
+  font-size: 15px;
 
 }
 

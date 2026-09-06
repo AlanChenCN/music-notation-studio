@@ -17,13 +17,16 @@ type MidiAccessStatus =
   | "denied"
   | "error"
 
-interface MidiMonitorProps {
-  isOpen: boolean
-  onClose: () => void
-  anchorRef: RefObject<HTMLElement | null>
+export interface MidiMonitorContentProps {
   onConnectionChange: (deviceName: string | null) => void
   onConnectionStateChange: (state: InputConnectionState) => void
   onMidiMessage: (event: MIDIMessageEvent) => void
+}
+
+interface MidiMonitorProps extends MidiMonitorContentProps {
+  isOpen: boolean
+  onClose: () => void
+  anchorRef: RefObject<HTMLElement | null>
 }
 
 function statusText(status: MidiAccessStatus) {
@@ -43,14 +46,11 @@ function statusText(status: MidiAccessStatus) {
   }
 }
 
-function MidiMonitor({
-  isOpen,
-  onClose,
-  anchorRef,
+export function MidiMonitorContent({
   onConnectionChange,
   onConnectionStateChange,
   onMidiMessage,
-}: MidiMonitorProps) {
+}: MidiMonitorContentProps) {
   const [status, setStatus] = useState<MidiAccessStatus>(() =>
     isWebMidiSupported() ? "idle" : "unsupported",
   )
@@ -165,15 +165,8 @@ function MidiMonitor({
   }
 
   return (
-    <Modal
-      isOpen={isOpen}
-      title="USB MIDI"
-      anchorRef={anchorRef}
-      placement="top"
-      size="wide"
-      onClose={onClose}
-    >
       <div className="midi-monitor-panel">
+        <h3>USB MIDI</h3>
         <p className="midi-status">{statusText(status)}</p>
 
         {errorMessage && <p className="midi-error">{errorMessage}</p>}
@@ -247,6 +240,31 @@ function MidiMonitor({
           </p>
         )}
       </div>
+  )
+}
+
+function MidiMonitor({
+  isOpen,
+  onClose,
+  anchorRef,
+  onConnectionChange,
+  onConnectionStateChange,
+  onMidiMessage,
+}: MidiMonitorProps) {
+  return (
+    <Modal
+      isOpen={isOpen}
+      title="USB MIDI"
+      anchorRef={anchorRef}
+      placement="top"
+      size="wide"
+      onClose={onClose}
+    >
+      <MidiMonitorContent
+        onConnectionChange={onConnectionChange}
+        onConnectionStateChange={onConnectionStateChange}
+        onMidiMessage={onMidiMessage}
+      />
     </Modal>
   )
 }

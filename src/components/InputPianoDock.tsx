@@ -5,9 +5,7 @@ import {
   shiftKeyboardBaseNote,
   type KeyboardBaseNote,
 } from '../input/keyboardMapper'
-import InputDeviceButton, {
-  type InputConnectionState,
-} from './InputDeviceButton'
+import type { InputConnectionState } from './InputDeviceButton'
 import KeyboardBaseModal from './KeyboardBaseModal'
 import KeyLabelsModal from './KeyLabelsModal'
 import Piano from './Piano'
@@ -24,12 +22,8 @@ interface InputPianoDockProps {
   onKeyboardBaseNoteChange: (baseNote: KeyboardBaseNote) => void
   midiButtonRef: RefObject<HTMLButtonElement | null>
   midiConnectionState: InputConnectionState
-  midiDeviceName: string | null
-  onMidiConnect: () => void
-  bluetoothButtonRef: RefObject<HTMLButtonElement | null>
   bluetoothConnectionState: InputConnectionState
-  bluetoothMidiDeviceName: string | null
-  onBluetoothConnect: () => void
+  onMidiConnect: () => void
 }
 
 function labelModeText(labelMode: PianoLabelMode) {
@@ -60,12 +54,8 @@ function InputPianoDock({
   onKeyboardBaseNoteChange,
   midiButtonRef,
   midiConnectionState,
-  midiDeviceName,
-  onMidiConnect,
-  bluetoothButtonRef,
   bluetoothConnectionState,
-  bluetoothMidiDeviceName,
-  onBluetoothConnect,
+  onMidiConnect,
 }: InputPianoDockProps) {
   const [keyboardBasePopoverOpen, setKeyboardBasePopoverOpen] = useState(false)
   const [keyLabelsPopoverOpen, setKeyLabelsPopoverOpen] = useState(false)
@@ -83,7 +73,6 @@ function InputPianoDock({
               className="keyboard-mapping-control input-dock-control"
               aria-label="Keyboard Mapping"
             >
-              <span className="button-label">Keyboard Mapping</span>
               <div className="keyboard-mapping-row">
                 <button
                   className="app-button app-button--compact keyboard-mapping-button keyboard-mapping-arrow"
@@ -130,46 +119,45 @@ function InputPianoDock({
 
             <button
               ref={keyLabelsButtonRef}
-              className="app-button"
+              className="app-button dock-option-button"
               type="button"
               aria-haspopup="dialog"
               aria-expanded={keyLabelsPopoverOpen}
               onClick={() => setKeyLabelsPopoverOpen(true)}
             >
-              <span className="button-label">Key Labels</span>
+              <span className="button-label">Labels</span>
               <span className="button-status">{labelModeText(labelMode)}</span>
             </button>
           </div>
 
           <div className="input-control-group input-control-group-right">
             <button
-              className="app-button"
+              className="app-button dock-status-button"
               type="button"
               aria-pressed={soundEnabled}
               data-active={soundEnabled}
               onClick={() => onSoundChange(!soundEnabled)}
             >
-              <span className="button-label">Web Sound</span>
-              <span className="button-status">
-                {soundEnabled ? 'On' : 'Off'}
-              </span>
-            </button>
+                <span className="button-label">Sound</span>
+                <span className="status-indicator" data-status={soundEnabled ? 'on' : 'off'} aria-hidden="true">●</span>
+              </button>
 
-            <InputDeviceButton
+            <button
               ref={midiButtonRef}
-              label="USB MIDI"
-              state={midiConnectionState}
-              deviceName={midiDeviceName}
+              className="app-button dock-status-button"
+              type="button"
+              data-connection-state={midiConnectionState === 'connected' || bluetoothConnectionState === 'connected'
+                ? 'connected'
+                : midiConnectionState === 'connecting' || bluetoothConnectionState === 'connecting'
+                  ? 'connecting'
+                  : 'disconnected'}
               onClick={onMidiConnect}
-            />
-
-            <InputDeviceButton
-              ref={bluetoothButtonRef}
-              label="Bluetooth"
-              state={bluetoothConnectionState}
-              deviceName={bluetoothMidiDeviceName}
-              onClick={onBluetoothConnect}
-            />
+              aria-label="MIDI 输入设备"
+              title="打开 USB / Bluetooth MIDI 设置"
+            >
+              <span className="button-label">MIDI</span>
+              <span className="status-indicator" aria-hidden="true">●</span>
+            </button>
           </div>
         </div>
 
