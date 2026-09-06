@@ -162,8 +162,8 @@
 }
 
 .score-entry {
-  min-height: 78px;
-  padding: 6px 12px;
+  min-height: 72px;
+  padding: 2px 12px;
 }
 
 .score-entry-inner {
@@ -180,7 +180,7 @@
   display: grid;
   grid-template-columns: 230px 234px;
   align-items: center;
-  gap: 6px 10px;
+  gap: 4px 10px;
 }
 
 .score-edit-row {
@@ -195,7 +195,7 @@
 .score-note-value {
   display: grid;
   grid-template-columns: 52px 168px;
-  grid-template-rows: 19px 13px;
+  grid-template-rows: 34px;
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -215,19 +215,38 @@
   white-space: nowrap;
 }
 
-.score-note-value small {
-  grid-column: 2;
-  color: var(--theme-text-color);
-  font-size: 9px;
-  white-space: nowrap;
-}
-
 .score-note-value--input strong {
   color: var(--theme-accent-color);
 }
 
 .score-note-value--current strong {
   color: var(--theme-left-hand-color);
+}
+
+.score-edit-context {
+  display: flex;
+  flex: 0 0 176px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 176px;
+  height: 72px;
+  padding-inline: 10px;
+  border-right: 1px solid var(--theme-border-color);
+  white-space: nowrap;
+}
+
+.score-edit-context span {
+  color: var(--theme-text-color);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.score-edit-context strong {
+  overflow: hidden;
+  color: var(--theme-heading-color);
+  font-size: 12px;
+  text-overflow: ellipsis;
 }
 
 .score-edit-matrix .score-stepper {
@@ -249,8 +268,8 @@
   grid-template-rows: repeat(2, 34px);
   align-items: center;
   justify-content: center;
-  gap: 6px 10px;
-  min-height: 74px;
+  gap: 4px 10px;
+  min-height: 72px;
   position: relative;
   white-space: nowrap;
 }
