@@ -224,11 +224,11 @@
 }
 
 .score-edit-context {
-  display: flex;
+  display: grid;
   flex: 0 0 176px;
+  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-rows: repeat(2, 1fr);
   align-items: center;
-  justify-content: center;
-  gap: 6px;
   min-width: 176px;
   height: 72px;
   padding-inline: 10px;
@@ -237,16 +237,15 @@
 }
 
 .score-edit-context > span {
+  grid-column: 1;
+  grid-row: 1;
   color: var(--theme-text-color);
   font-size: 13px;
   font-weight: 600;
 }
 
 .score-edit-context strong {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+  display: contents;
   overflow: hidden;
   color: var(--theme-heading-color);
   font-size: 13px;
@@ -257,8 +256,12 @@
 .score-edit-context-line {
   display: flex;
   align-items: baseline;
+  grid-column: 2;
   line-height: 1.1;
 }
+
+.score-edit-context-line:first-child { grid-row: 1; }
+.score-edit-context-line:last-child { grid-row: 2; }
 
 .score-edit-context-number {
   display: inline-block;
