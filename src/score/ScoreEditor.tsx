@@ -34,7 +34,7 @@ export default function ScoreEditor({ active, audition, onPlayNote, onStopNote }
   const selectedEvent = score.events.find(event => event.id === selected)
   const insertionIndex = selectedEvent ? score.events.indexOf(selectedEvent) : score.events.length
   const editPosition = selectedEvent
-    ? `第 ${insertionIndex + 1} 项前 · 第 ${selectedEvent.startBeat + 1} 拍`
+    ? `第 ${insertionIndex + 1} 项 · 第 ${selectedEvent.startBeat + 1} 拍`
     : `末尾 · 第 ${length + 1} 拍`
   const dirty = useMemo(() => JSON.stringify(score) !== saved, [score, saved])
   const clearSelection = useCallback(() => setSelected(null), [])
@@ -174,7 +174,12 @@ export default function ScoreEditor({ active, audition, onPlayNote, onStopNote }
         </div>
         <div className="score-edit-context" aria-label="编辑位置" aria-live="polite" title={editPosition}>
           <span>编辑</span>
-          <strong>{editPosition}</strong>
+          <strong>
+            <span className="score-edit-context-line">
+              {selectedEvent ? <><span>第</span><b className="score-edit-context-number">{insertionIndex + 1}</b><span>项</span></> : <span className="score-edit-context-number score-edit-context-number--text">末尾</span>}
+            </span>
+            <span className="score-edit-context-line"><span>第</span><b className="score-edit-context-number">{selectedEvent ? selectedEvent.startBeat + 1 : length + 1}</b><span>拍</span></span>
+          </strong>
         </div>
         <div className="score-edit-matrix">
           <div className="score-edit-row score-edit-row--insert">

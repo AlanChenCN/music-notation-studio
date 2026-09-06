@@ -125,7 +125,7 @@
 
 .score-time-signature span {
   color: var(--theme-text-color);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -139,7 +139,7 @@
 .score-time-signature output {
   min-width: 34px;
   color: var(--theme-heading-color);
-  font-size: 13px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
@@ -236,17 +236,39 @@
   white-space: nowrap;
 }
 
-.score-edit-context span {
+.score-edit-context > span {
   color: var(--theme-text-color);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .score-edit-context strong {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   overflow: hidden;
   color: var(--theme-heading-color);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
   text-overflow: ellipsis;
+}
+
+.score-edit-context-line {
+  display: flex;
+  align-items: baseline;
+  line-height: 1.1;
+}
+
+.score-edit-context-number {
+  display: inline-block;
+  width: 5ch;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.score-edit-context-number--text {
+  text-align: center;
 }
 
 .score-edit-matrix .score-stepper {
