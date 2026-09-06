@@ -15,13 +15,44 @@ test('live pitches use the same staff height as target notes, with distinguishab
   assert.equal(liveY,targetY)
   assert.doesNotMatch(markup,/在末尾继续写入/)
 })
-test('left-follow layout aligns targets to event onset while the editor keeps centered notation', () => {
+test('left-follow keeps its playback anchor while both Trainer and Editor center notation in each slot', () => {
   const editor=renderToStaticMarkup(createElement(ScoreStaff,props))
   const trainer=renderToStaticMarkup(createElement(ScoreStaff,{...props,followLeft:true,readOnly:true}))
   const cursorX=trainer.match(/class="score-playback-cursor" x1="([^"]+)"/)[1]
-  assert.equal(trainer.match(/<ellipse cx="([^"]+)"/)[1],cursorX)
-  assert.notEqual(editor.match(/<ellipse cx="([^"]+)"/)[1],cursorX)
+  const trainerNoteX=trainer.match(/<ellipse cx="([^"]+)"/)[1]
+  const editorNoteX=editor.match(/<ellipse cx="([^"]+)"/)[1]
+  assert.notEqual(trainerNoteX,cursorX)
+  assert.equal(trainerNoteX,editorNoteX)
   assert.match(trainer,/padding-left:20%;padding-right:80%/)
   assert.match(editor,/score-edit-cursor/)
   assert.doesNotMatch(trainer,/score-edit-cursor/)
+})
+
+test('Trainer feedback shares results across tied segments and marks warnings per live pitch', () => {
+  const tiedScore={version:1,title:'feedback',tempo:90,timeSignature:[3,4],events:[
+    {id:'long',startBeat:0,duration:4,pitches:[60]},
+    {id:'current',startBeat:4,duration:1,pitches:[62]},
+  ]}
+  const markup=renderToStaticMarkup(createElement(ScoreStaff,{
+    ...props,
+    score:tiedScore,
+    selected:'current',
+    beat:4.2,
+    playing:true,
+    followLeft:true,
+    readOnly:true,
+    practiceActiveEventId:'current',
+    practiceEventResults:{long:'correct',current:'hit'},
+    livePitches:[60,65],
+    liveWarningPitches:[65],
+  }))
+  assert.equal((markup.match(/score-practice-result--correct/g) ?? []).length,1)
+  assert.equal((markup.match(/>✓<\/text>/g) ?? []).length,1)
+  assert.match(markup,/score-event-frame--practice-current score-event-frame--practice-hit/)
+  assert.match(markup,/data-live-pitch="65" data-live-warning="true"/)
+  assert.doesNotMatch(markup,/data-live-pitch="60" data-live-warning/)
+
+  const editor=renderToStaticMarkup(createElement(ScoreStaff,{...props,score:tiedScore}))
+  assert.doesNotMatch(editor,/score-event-frame--practice/)
+  assert.doesNotMatch(editor,/score-practice-result/)
 })

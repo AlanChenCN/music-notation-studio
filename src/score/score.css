@@ -31,6 +31,15 @@
 .score-note-target:hover .score-event-frame,
 .score-note-target:focus-visible .score-event-frame { stroke: var(--theme-accent-color); }
 .score-event-frame--selected { stroke: var(--theme-left-hand-color); }
+.score-event-frame--practice-current {
+  fill: var(--theme-accent-background);
+  stroke: var(--theme-accent-border);
+}
+.score-event-frame--practice-hit {
+  stroke: var(--theme-status-success);
+}
+.score-practice-result--correct { fill: var(--theme-status-success); }
+.score-practice-result--missed { fill: var(--theme-status-warning); }
 .score-inspector { min-height: 48px; padding: 14px 16px; font-size: 13px; background: var(--theme-surface-background); border: 1px solid var(--theme-border-color); border-top: 0; border-radius: 0 0 10px 10px; }
 .score-transport { padding: 18px 0 0; }
 .score-progress { flex: 1; min-width: 180px; }
