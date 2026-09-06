@@ -199,19 +199,25 @@ export default function ScoreEditor({ active, audition, onPlayNote, onStopNote }
     </div>
     <ScoreStaff score={score} selected={selected} beat={playback.beat} playing={playback.playing} previewPitches={audition} previewDuration={duration} insertionIndex={insertionIndex} onSelect={setSelected} onEnd={clearSelection} />
     <div className="score-transport">
-      <label className="score-progress">播放进度<input aria-label="播放进度" type="range" min="0" max={length || 1} step="0.01" disabled={!length} value={playback.beat} onChange={event => transport.seek(Number(event.target.value))} /></label>
-      <output>{playback.beat.toFixed(1)} / {length} 拍</output>
-      <button className="score-start-toggle" disabled={!length} onClick={() => transport.seek(0)} aria-label="播放光标回到开头" title="播放光标回到开头">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="2.5" height="14" rx=".6" /><path d="M18 6 9 12l9 6Z" /></svg>
-      </button>
-      <button className="score-locate-toggle" disabled={!selectedEvent} onClick={() => selectedEvent && transport.seek(selectedEvent.startBeat)} aria-label="定位到当前音符" title="定位到当前音符">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v16M18 5v10" /><ellipse className="score-locate-notehead" cx="15" cy="15" rx="4" ry="2.8" transform="rotate(-15 15 15)" /></svg>
-      </button>
-      <button className="score-play-toggle score-primary" disabled={!length} onClick={playback.playing ? transport.pause : transport.play} aria-label={playback.playing ? '暂停播放' : '开始播放'}>
-        {playback.playing
-          ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="5" width="3.5" height="14" rx="1" /><rect x="13.5" y="5" width="3.5" height="14" rx="1" /></svg>
-          : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5 18 12 8 18.5Z" /></svg>}
-      </button>
+      <div className="score-progress-group">
+        <label className="score-progress"><input aria-label="播放进度" type="range" min="0" max={length || 1} step="0.01" disabled={!length} value={playback.beat} onChange={event => transport.seek(Number(event.target.value))} /></label>
+        <output>{playback.beat.toFixed(1)} / {length} 拍</output>
+      </div>
+      <span className="score-transport-divider" aria-hidden="true" />
+      <div className="score-transport-actions" aria-label="播放控制">
+        <button className="score-start-toggle" disabled={!length} onClick={() => transport.seek(0)} aria-label="播放光标回到开头" title="播放光标回到开头">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="2.5" height="14" rx=".6" /><path d="M18 6 9 12l9 6Z" /></svg>
+        </button>
+        <button className="score-locate-toggle" disabled={!selectedEvent} onClick={() => selectedEvent && transport.seek(selectedEvent.startBeat)} aria-label="定位到当前音符" title="定位到当前音符">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v16M18 5v10" /><ellipse className="score-locate-notehead" cx="15" cy="15" rx="4" ry="2.8" transform="rotate(-15 15 15)" /></svg>
+        </button>
+        <button className="score-play-toggle score-primary" disabled={!length} onClick={playback.playing ? transport.pause : transport.play} aria-label={playback.playing ? '暂停播放' : '开始播放'}>
+          {playback.playing
+            ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="5" width="3.5" height="14" rx="1" /><rect x="13.5" y="5" width="3.5" height="14" rx="1" /></svg>
+            : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5 18 12 8 18.5Z" /></svg>}
+        </button>
+      </div>
+      <span className="score-transport-divider" aria-hidden="true" />
       <div className="score-tempo" aria-label="速度 BPM">
         <span>BPM</span>
         <button aria-label="速度降低 10 BPM" disabled={score.tempo <= 30} onClick={() => updateTempo(score.tempo - 10)}>−</button>
