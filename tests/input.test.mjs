@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { InputLayer } from '../src/input/inputLayer.ts'
 import { KeyboardController } from '../src/input/keyboardController.ts'
+import { midiNumberForFrequency, nearestPianoSample } from '../src/audio/pianoSamples.ts'
 
 test('typing, shortcuts, and repeats do not become piano input; keyup still releases a held note', () => {
   const listeners = new Map()
@@ -32,8 +33,9 @@ test('audio ignores duplicate starts and keeps playback voices independent of li
   const oscillators = []
   globalThis.AudioContext = class {
     state = 'running'; currentTime = 0; destination = {}
-    createOscillator() { const oscillator = { frequency: {}, connect() {}, start() {}, stop() { this.stopped = true }, stopped: false }; oscillators.push(oscillator); return oscillator }
+    createOscillator() { const oscillator = { frequency: { setValueAtTime() {} }, connect() {}, start() {}, stop() { this.stopped = true }, stopped: false }; oscillators.push(oscillator); return oscillator }
     createGain() { return { gain: { value: 0, cancelScheduledValues() {}, setValueAtTime() {}, linearRampToValueAtTime() {} }, connect() {} } }
+    createDynamicsCompressor() { return { threshold: {}, knee: {}, ratio: {}, attack: {}, release: {}, connect() {} } }
   }
   try {
     const audio = await import('../src/audio/sound.ts')
@@ -45,4 +47,11 @@ test('audio ignores duplicate starts and keeps playback voices independent of li
     assert.equal(oscillators[0].stopped, true)
     audio.startNote('C4', 261); assert.equal(oscillators.length, 2)
   } finally { globalThis.AudioContext = original }
+})
+
+test('piano samples select the nearest anchor across the full keyboard range', () => {
+  assert.equal(midiNumberForFrequency(440), 69)
+  assert.equal(nearestPianoSample(21).midiNumber, 21)
+  assert.equal(nearestPianoSample(61).midiNumber, 60)
+  assert.equal(nearestPianoSample(108).midiNumber, 96)
 })

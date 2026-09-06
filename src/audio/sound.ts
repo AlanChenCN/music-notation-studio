@@ -1,108 +1,147 @@
-const audioContext = new AudioContext()
+import {
+  midiNumberForFrequency,
+  nearestPianoSample,
+  pianoSampleAnchors,
+  pianoSampleUrl,
+} from './pianoSamples'
 
-
-interface ActiveNote {
-  oscillator: OscillatorNode
+interface ActiveVoice {
   gain: GainNode
+  source: AudioScheduledSourceNode
 }
 
+const activeVoices = new Map<string, ActiveVoice>()
+const sampleBuffers = new Map<number, AudioBuffer>()
 
-const activeNotes: Record<string, ActiveNote> = {}
-
+let audioContext: AudioContext | undefined
+let masterGain: GainNode | undefined
+let compressor: DynamicsCompressorNode | undefined
+let sampleLoadStarted = false
 let audioEnabled = true
 
+function contextForPlayback() {
+  if (!audioContext) {
+    audioContext = new AudioContext()
+  }
+  return audioContext
+}
+
+function outputFor(context: AudioContext) {
+  if (masterGain && compressor) {
+    return masterGain
+  }
+  masterGain = context.createGain()
+  compressor = context.createDynamicsCompressor()
+  masterGain.gain.value = audioEnabled ? 0.85 : 0
+  compressor.threshold.value = -20
+  compressor.knee.value = 18
+  compressor.ratio.value = 8
+  compressor.attack.value = 0.003
+  compressor.release.value = 0.18
+  masterGain.connect(compressor)
+  compressor.connect(context.destination)
+  return masterGain
+}
+
+function loadSamples(context: AudioContext) {
+  if (sampleLoadStarted || typeof window === 'undefined') {
+    return
+  }
+  sampleLoadStarted = true
+  void Promise.all(pianoSampleAnchors.map(async sample => {
+    try {
+      const response = await fetch(pianoSampleUrl(sample.file))
+      if (!response.ok) {
+        return
+      }
+      const buffer = await context.decodeAudioData(await response.arrayBuffer())
+      sampleBuffers.set(sample.midiNumber, buffer)
+    } catch {
+      // The synth fallback remains available when a local sample cannot load.
+    }
+  }))
+}
+
+function velocityGain(velocity?: number) {
+  const normalized = velocity === undefined ? 0.72 : Math.min(1, Math.max(0.08, velocity / 127))
+  return 0.08 + normalized * 0.13
+}
+
+function createSampleVoice(context: AudioContext, frequency: number, gain: GainNode, startTime: number) {
+  const midiNumber = midiNumberForFrequency(frequency)
+  const sample = nearestPianoSample(midiNumber)
+  const buffer = sampleBuffers.get(sample.midiNumber)
+  if (!buffer) {
+    return undefined
+  }
+  const source = context.createBufferSource()
+  source.buffer = buffer
+  source.playbackRate.setValueAtTime(2 ** ((midiNumber - sample.midiNumber) / 12), startTime)
+  source.connect(gain)
+  source.start(startTime)
+  return source
+}
+
+function createFallbackVoice(context: AudioContext, frequency: number, gain: GainNode, startTime: number) {
+  const source = context.createOscillator()
+  source.type = 'triangle'
+  source.frequency.setValueAtTime(frequency, startTime)
+  source.connect(gain)
+  source.start(startTime)
+  return source
+}
+
+function startEnvelope(gain: GainNode, level: number, startTime: number) {
+  gain.gain.cancelScheduledValues(startTime)
+  gain.gain.setValueAtTime(0.0001, startTime)
+  gain.gain.linearRampToValueAtTime(level, startTime + 0.008)
+}
 
 export function setAudioEnabled(enabled: boolean) {
   audioEnabled = enabled
-
+  if (masterGain && audioContext) {
+    const now = audioContext.currentTime
+    masterGain.gain.cancelScheduledValues(now)
+    masterGain.gain.setValueAtTime(masterGain.gain.value, now)
+    masterGain.gain.linearRampToValueAtTime(enabled ? 0.85 : 0.0001, now + 0.012)
+  }
   if (!enabled) {
-    Object.keys(activeNotes).forEach(stopNote)
+    Array.from(activeVoices.keys()).forEach(stopNote)
   }
 }
 
-
-export function startNote(
-  name: string,
-  frequency: number
-) {
-
-  if (!audioEnabled || activeNotes[name]) {
+/** Starts one independently releasable voice. The identifier must include its input source. */
+export function startNote(id: string, frequency: number, velocity?: number) {
+  if (!audioEnabled || activeVoices.has(id)) {
     return
   }
-
-  if (audioContext.state === "suspended") {
-    audioContext.resume()
+  const context = contextForPlayback()
+  if (context.state === 'suspended') {
+    void context.resume()
   }
-
-
-  const oscillator =
-    audioContext.createOscillator()
-
-
-  const gain =
-    audioContext.createGain()
-
-
-  oscillator.frequency.value = frequency
-
-  oscillator.type = "sine"
-
-
-  gain.gain.value = 0.3
-
-
-  oscillator.connect(gain)
-
-  gain.connect(
-    audioContext.destination
-  )
-
-
-  oscillator.start()
-
-
-  activeNotes[name] = {
-    oscillator,
-    gain
-  }
-
+  loadSamples(context)
+  const gain = context.createGain()
+  const startTime = context.currentTime + 0.005
+  startEnvelope(gain, velocityGain(velocity), startTime)
+  gain.connect(outputFor(context))
+  const source = createSampleVoice(context, frequency, gain, startTime)
+    ?? createFallbackVoice(context, frequency, gain, startTime)
+  activeVoices.set(id, { gain, source })
 }
 
-
-export function stopNote(name:string) {
-
-  const note =
-    activeNotes[name]
-
-
-  if (note) {
-
-    const now =
-      audioContext.currentTime
-
-
-    note.gain.gain.cancelScheduledValues(now)
-
-
-    note.gain.gain.setValueAtTime(
-      note.gain.gain.value,
-      now
-    )
-
-
-    note.gain.gain.linearRampToValueAtTime(
-      0,
-      now + 0.15
-    )
-
-
-    note.oscillator.stop(
-      now + 0.15
-    )
-
-
-    delete activeNotes[name]
-
+export function stopNote(id: string) {
+  const voice = activeVoices.get(id)
+  if (!voice || !audioContext) {
+    return
   }
-
+  const now = audioContext.currentTime
+  voice.gain.gain.cancelScheduledValues(now)
+  voice.gain.gain.setValueAtTime(Math.max(0.0001, voice.gain.gain.value), now)
+  voice.gain.gain.linearRampToValueAtTime(0.0001, now + 0.16)
+  try {
+    voice.source.stop(now + 0.19)
+  } catch {
+    // A naturally finished sample needs no additional cleanup.
+  }
+  activeVoices.delete(id)
 }

@@ -188,7 +188,7 @@ function App() {
       return [...prev, noteName]
     })
 
-    startNote(note.name, note.frequency)
+    startNote(`${context.source}:${note.name}`, note.frequency, context.velocity)
   }, [noteEventFactory, practiceController, scorePractice])
 
   const releaseNote = useCallback((
@@ -220,7 +220,7 @@ function App() {
     }
 
     setPressedNotes(prev => prev.filter(item => item !== noteName))
-    stopNote(noteName)
+    stopNote(`${context.source}:${noteName}`)
   }, [noteEventFactory, practiceController, scorePractice])
 
   const inputLayer = useMemo(

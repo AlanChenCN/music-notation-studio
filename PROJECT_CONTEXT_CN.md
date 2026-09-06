@@ -166,12 +166,14 @@ USB MIDI 和 Bluetooth MIDI 均通过 Input Layer 统一驱动 Piano、Grand Sta
 
 当前支持：
 
--   实时声音生成
--   多音同时播放
--   按下持续发声
--   松开停止
+-   基于本地 Salamander Grand Piano V3 采样的 88 键多声部钢琴回放，按邻近锚点采样的 `playbackRate` 覆盖 A0-C8
+-   采样加载期间的轻量 Web Audio 合成 fallback
+-   每个 `source:note` 独立持有 Voice，支持 MIDI Velocity、短 Attack 与自然 Release
+-   Master Gain 与 Dynamics Compressor 统一处理和弦音量叠加
 -   浏览器声音开关，默认开启并作为用户偏好持久化
 -   关闭声音时保持琴键动画与输入功能
+
+采样资产位于 `public/audio/salamander/`，授权与署名见 `ATTRIBUTIONS.md`。Audio Engine 不接管 Input Layer、乐谱或练习状态；它只消费 App 路由后的开始／停止声音请求。
 
 ------------------------------------------------------------------------
 
@@ -180,8 +182,10 @@ USB MIDI 和 Bluetooth MIDI 均通过 Input Layer 统一驱动 Piano、Grand Sta
     src/
 
     ├── audio/
-    │   └── sound.ts
-    │       音频引擎
+    │   ├── sound.ts
+    │   │   多声部 Voice Engine、包络、总线与采样加载
+    │   └── pianoSamples.ts
+    │       本地采样锚点、音高选择与资源路径
 
     ├── components/
     │   ├── Header.tsx
@@ -372,12 +376,13 @@ USB MIDI 和 Bluetooth MIDI 均通过 Input Layer 统一驱动 Piano、Grand Sta
 
 当前：
 
--   使用电脑 Web Audio API 发声
+-   使用本地采样钢琴与 Web Audio API 发声
+-   采样未就绪时使用轻量合成 fallback
 
 计划：
 
 -   支持外部 MIDI 设备自带音源
--   后续优化钢琴音色
+-   后续可增加可选音色、延音踏板、共鸣与更高动态层采样
 
 ## UI界面
 

@@ -42,8 +42,8 @@ See [SCORE_EDITOR.md](SCORE_EDITOR.md) for workflows, data format, and limits. T
   支持鼠标点击输入
 - 🔗 Unified Input Layer for Keyboard, Mouse, USB MIDI, and Bluetooth LE MIDI<br>
   Keyboard、Mouse、USB MIDI 和 Bluetooth LE MIDI 统一经过 Input Layer
-- 🎵 Real-time Web Audio playback<br>
-  基于 Web Audio 的实时声音播放
+- 🎹 Polyphonic sampled grand piano with velocity, envelopes, and limiter protection<br>
+  支持力度、包络与限幅保护的本地采样多声部三角钢琴音源
 - 🔊 Browser sound toggle, enabled by default<br>
   浏览器声音开关，默认开启
 - 🎹 USB MIDI input through the shared Unified Input Layer<br>
