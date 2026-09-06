@@ -26,7 +26,7 @@ function StatusBar({
 
   return (
     <footer className="status-bar">
-      Ready | Keyboard: {keyboardRangeLabel(keyboardBaseNote)} | Base: {keyboardBaseNote} | {midiStatus} | v0.5.0-alpha
+      Ready | Keyboard: {keyboardRangeLabel(keyboardBaseNote)} | Base: {keyboardBaseNote} | {midiStatus} | v0.5.0
     </footer>
   )
 }

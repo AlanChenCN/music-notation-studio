@@ -100,9 +100,9 @@ Input & Piano Dock 中的 Keyboard Mapping 可以选择基准音，并通过方�
 
 ## Current Status / 当前状态
 
-Version `v0.5.0-alpha` adds the first Score Editor release to the completed Trainer scope: manual score entry, editable time signatures, score playback and seeking, local score persistence, JSON import/export, and a shared grand-staff layout. The existing 88-key piano, Keyboard / Mouse / USB MIDI / Bluetooth LE MIDI input, Unified Input Layer, practice tools, themes, and Input & Piano Dock remain included.
+Version `v0.5.0` adds the first Score Editor release to the completed Trainer scope: manual score entry, editable time signatures, score playback and seeking, local score persistence, JSON import/export, and a shared grand-staff layout. The existing 88-key piano, Keyboard / Mouse / USB MIDI / Bluetooth LE MIDI input, Unified Input Layer, practice tools, themes, and Input & Piano Dock remain included.
 
-版本 `v0.5.0-alpha` 在既有 Trainer 范围上加入第一版 Score Editor：手动录谱、可编辑拍号、乐谱回放与定位、本地乐谱保存、JSON 导入导出，以及共享大谱表布局。原有的 88 键钢琴、Keyboard / Mouse / USB MIDI / Bluetooth LE MIDI 输入、统一 Input Layer、练习工具、主题和 Input & Piano Dock 均继续保留。
+版本 `v0.5.0` 在既有 Trainer 范围上加入第一版 Score Editor：手动录谱、可编辑拍号、乐谱回放与定位、本地乐谱保存、JSON 导入导出，以及共享大谱表布局。原有的 88 键钢琴、Keyboard / Mouse / USB MIDI / Bluetooth LE MIDI 输入、统一 Input Layer、练习工具、主题和 Input & Piano Dock 均继续保留。
 
 ## Development / 开发
 

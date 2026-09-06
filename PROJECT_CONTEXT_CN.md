@@ -18,7 +18,7 @@ Piano Trainer 是一个基于 React + TypeScript 开发的 Web 钢琴练习工�
 
 # 2. 当前版本
 
-## v0.5.0-alpha：乐谱编辑第一版（2026-09-06）
+## v0.5.0：乐谱编辑第一版（2026-09-06）
 
 新增 Trainer / 乐谱编辑选项卡，底部共用 Keyboard、Web Sound 和统一 MIDI 面板；面板内分别管理 USB MIDI 与 Bluetooth MIDI。Keyboard Dock 支持带动画的折叠状态，折叠后只保留功能控件并隐藏钢琴键，刷新后恢复上次状态。
 编辑区使用固定四列的“输入 / 当前”两行矩阵：同类控件严格上下对齐，拍号旁增加独立的编辑位置列显示插入项次与拍位，数字固定宽度居中；输入音 / 当前音只保留音高内容，不再在下方占用辅助文本行。支持试音后写入单音 / 和弦或休止符，并通过最近试音替换当前音高。“回到末尾 / 删除当前”在矩阵右侧等宽上下排列并对应两行；窄屏仅横向滚动，不增加编辑区高度。撤销重做、本地保存与 JSON 导入导出继续保留。
@@ -1169,15 +1169,15 @@ Practice Canvas，不新增独立 Practice Engine。
 
 当前开发版本：
 
-    v0.5.0-alpha Piano Trainer / Score Editor
+    v0.5.0 Piano Trainer / Score Editor
     既有 Trainer 功能与 P6-001 至 P6-007 已完成；乐谱编辑第一版已完成
-    Release: v0.5.0-alpha
-    当前开发：在 main 上继续完善 Score Editor；发布标签待创建
+    Release: v0.5.0
+    当前开发：在 main 上继续完善 Score Editor
 
 最新稳定版本：
 
-    v0.1.0
-    钢琴核心
+    v0.5.0
+    Piano Trainer / Score Editor
 
 ------------------------------------------------------------------------
 
