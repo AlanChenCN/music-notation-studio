@@ -6,9 +6,9 @@ A browser-based piano practice and manual score-writing tool built with React an
 
 ## Score Editor / 乐谱编辑
 
-The application opens on the dedicated **Score Editor** tab by default. It shares the bottom Keyboard / MIDI input dock with Trainer.
+The application opens on the dedicated **Score Editor** tab by default. It shares the bottom Keyboard / MIDI input dock with Trainer; the dock can collapse to keep its controls visible while hiding the piano keys.
 
-应用默认打开独立的 **Score Editor / 乐谱编辑** 选项卡，并与 Trainer 共用底部 Keyboard / MIDI 输入区；USB 与 Bluetooth MIDI 通过统一的 MIDI 按钮进入同一面板分别管理。
+应用默认打开独立的 **Score Editor / 乐谱编辑** 选项卡，并与 Trainer 共用底部 Keyboard / MIDI 输入区；Dock 可折叠为仅保留功能键的紧凑状态，USB 与 Bluetooth MIDI 通过统一的 MIDI 按钮进入同一面板分别管理。
 
 Audition notes first. Once all keys are released, the selected pitches and input duration appear at the insertion anchor; they enter the score only after writing. The fixed two-row `Input / Current` editor separates insertion from changes to the selected event.
 
