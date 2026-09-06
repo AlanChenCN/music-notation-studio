@@ -153,7 +153,7 @@ export default function ScoreEditor({ active, audition, onPlayNote, onStopNote }
 
   return <section hidden={!active} id="score-panel" role="tabpanel" aria-labelledby="score-tab" className="score-editor">
     <div className="score-document-bar">
-      <label className="score-title-field"><span>乐谱名称</span><input aria-label="乐谱名称" maxLength={120} value={score.title} onChange={event => change({ ...score, title: event.target.value })} /></label>
+      <label className="score-title-field"><input aria-label="乐谱名称" maxLength={120} value={score.title} onChange={event => change({ ...score, title: event.target.value })} /></label>
       <div className="score-summary"><span>{score.timeSignature[0]}/{score.timeSignature[1]} · 单声部</span><span>{score.events.length} 项 · {length} 拍</span></div>
       <div className="score-actions score-document-actions">
         <button className="score-file-action" onClick={() => { if (dirty && !window.confirm('新建乐谱？未保存内容可通过撤销恢复。')) return; change(createScore()); setSelected(null); transport.stop() }}>新建</button>
