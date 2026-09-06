@@ -901,13 +901,25 @@
 
 .input-controls .dock-option-button {
 
+  flex: 0 0 112px;
+
+  width: 112px;
+
   min-width: 112px;
+
+  max-width: 112px;
 
 }
 
 .input-controls .dock-status-button {
 
+  flex: 0 0 72px;
+
+  width: 72px;
+
   min-width: 72px;
+
+  max-width: 72px;
 
 }
 
@@ -1486,15 +1498,21 @@
 
   display: grid;
 
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 
-  gap: 8px;
+  gap: 6px;
 
 }
 
 .keyboard-base-option {
 
   width: 100%;
+
+  min-height: 30px;
+
+  padding: 5px 6px;
+
+  font-size: 13px;
 
 }
 

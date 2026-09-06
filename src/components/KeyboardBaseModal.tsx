@@ -28,7 +28,7 @@ function KeyboardBaseModal({
   return (
     <Modal
       isOpen={isOpen}
-      title="Keyboard Base"
+      title="Keyboard Mapping"
       anchorRef={anchorRef}
       placement="top"
       onClose={onClose}
@@ -36,7 +36,7 @@ function KeyboardBaseModal({
       <div
         className="keyboard-base-option-list"
         role="radiogroup"
-        aria-label="Keyboard base note"
+        aria-label="Keyboard mapping base note"
       >
         {keyboardBaseNotes.map(baseNote => (
           <button

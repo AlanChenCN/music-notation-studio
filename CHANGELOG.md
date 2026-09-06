@@ -7,6 +7,7 @@
 ### Score Editor 乐谱定位与横向节奏布局
 
 - Keyboard Dock 控件改为紧凑单行布局：移除 Keyboard Mapping 可见标题，缩短 Labels 文案，并用右侧状态灯表示 Sound 与统一 MIDI 状态；USB / Bluetooth MIDI 在同一 MIDI 面板中分别管理。
+- 固定 Labels、Sound 与 MIDI 按钮宽度，避免模式或状态文字改变时产生布局抖动；Keyboard Mapping 选择弹窗改用更紧凑的五列选项并统一标题。
 - Editor 工作区标题统一为 `Score Editor`。
 - 乐谱横向布局改为按拍格分配空间：长时值占据更多宽度，短时值维持紧凑且可读的最小间距。
 - 分离编辑与播放光标的视觉标记；编辑位置切换时自动居中，播放时仅在播放光标越出中央安全区后横向跟随。
