@@ -1,8 +1,8 @@
-# Piano Trainer 🎹
+# Music Notation Studio 🎹
 
-A browser-based piano practice and manual score-writing tool built with React and TypeScript.
+A browser-based music notation and practice tool built with React and TypeScript.
 
-一个基于 React 和 TypeScript 构建的浏览器钢琴练习与手动录谱工具。
+一个基于 React 和 TypeScript 构建的浏览器音乐记谱与练习工具。
 
 ## Score Editor / 乐谱编辑
 

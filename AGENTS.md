@@ -1,6 +1,6 @@
-# Piano Trainer Agent Guide
+# Music Notation Studio Agent Guide
 
-这份文件是新 Agent 接管项目时的入口。它只记录当前有效的开发上下文；历史细节以各文档的历史章节为准。
+这份文件是新 Agent 接管项目时的入口。当前产品名为 Music Notation Studio，仓库名为 `music-notation-studio`；它只记录当前有效的开发上下文，历史细节以各文档的历史章节为准。
 
 ## 当前状态
 

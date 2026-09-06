@@ -1,4 +1,4 @@
-.piano-trainer {
+.music-notation-studio {
 
   display: flex;
 
@@ -48,13 +48,13 @@
 
 }
 
-.piano-trainer--key-dock-collapsed {
+.music-notation-studio--key-dock-collapsed {
 
   --piano-dock-height: calc(var(--input-controls-height) + 24px);
 
 }
 
-.piano-trainer--key-dock-collapsed .piano-viewport {
+.music-notation-studio--key-dock-collapsed .piano-viewport {
 
   max-height: 0;
 
@@ -1826,7 +1826,7 @@
 
 @media (prefers-reduced-motion: reduce) {
 
-  .piano-trainer,
+  .music-notation-studio,
   .piano-dock,
   .piano-viewport {
 

@@ -1,8 +1,8 @@
-# Piano Trainer 项目上下文
+# Music Notation Studio 项目上下文
 
 ## 1. 项目简介
 
-Piano Trainer 是一个基于 React + TypeScript 开发的 Web 钢琴练习工具。
+Music Notation Studio 是一个基于 React + TypeScript 开发的 Web 音乐记谱与练习工具。
 
 项目目前向辅助扒谱、记录和回放的音乐工具发展；Trainer 保留为独立练习工作区。既有钢琴学习功能包括：
 
@@ -1169,7 +1169,7 @@ Practice Canvas，不新增独立 Practice Engine。
 
 当前开发版本：
 
-    v0.5.0 Piano Trainer / Score Editor
+    v0.5.0 Music Notation Studio / Score Editor
     既有 Trainer 功能与 P6-001 至 P6-007 已完成；乐谱编辑第一版已完成
     Release: v0.5.0
     当前开发：在 main 上继续完善 Score Editor
@@ -1177,7 +1177,7 @@ Practice Canvas，不新增独立 Practice Engine。
 最新稳定版本：
 
     v0.5.0
-    Piano Trainer / Score Editor
+    Music Notation Studio / Score Editor
 
 ------------------------------------------------------------------------
 

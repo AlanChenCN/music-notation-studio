@@ -72,7 +72,7 @@ function App() {
   const [pressedNotes, setPressedNotes] = useState<string[]>([])
   const [keyDockCollapsed, setKeyDockCollapsed] = useState(() => {
     try {
-      return window.localStorage.getItem('piano-trainer.key-dock-collapsed') === 'true'
+      return (window.localStorage.getItem('music-notation-studio.key-dock-collapsed') ?? window.localStorage.getItem('piano-trainer.key-dock-collapsed')) === 'true'
     } catch {
       return false
     }
@@ -91,7 +91,7 @@ function App() {
   const handleKeyDockCollapsedChange = useCallback((collapsed: boolean) => {
     setKeyDockCollapsed(collapsed)
     try {
-      window.localStorage.setItem('piano-trainer.key-dock-collapsed', String(collapsed))
+      window.localStorage.setItem('music-notation-studio.key-dock-collapsed', String(collapsed))
     } catch {
       // The dock remains usable when local storage is unavailable.
     }
@@ -440,7 +440,7 @@ function App() {
   }, [])
 
   return (
-    <div className={`piano-trainer${workspace === 'score' ? ' piano-trainer--score' : ''}${keyDockCollapsed ? ' piano-trainer--key-dock-collapsed' : ''}`}>
+    <div className={`music-notation-studio${workspace === 'score' ? ' music-notation-studio--score' : ''}${keyDockCollapsed ? ' music-notation-studio--key-dock-collapsed' : ''}`}>
       <Header
         workspace={workspace}
         disabled={pressedNotes.length > 0}

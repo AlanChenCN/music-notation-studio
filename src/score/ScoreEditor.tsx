@@ -5,10 +5,11 @@ import { ScoreTransport } from './scoreTransport'
 import ScoreStaff from './ScoreStaff'
 import './score.css'
 
-const storageKey = 'piano-trainer.score.v1'
+const storageKey = 'music-notation-studio.score.v1'
+const legacyStorageKey = 'piano-trainer.score.v1'
 function loadDraft() {
   try {
-    const saved = localStorage.getItem(storageKey)
+    const saved = localStorage.getItem(storageKey) ?? localStorage.getItem(legacyStorageKey)
     return { score: saved ? parseScore(saved) : createScore(), message: saved ? '已恢复本地乐谱' : '先试音，再写入。乐谱可单独保存。' }
   } catch { return { score: createScore(), message: '本地乐谱无法读取。原数据未覆盖，可导入备份或手动保存新谱。' } }
 }
@@ -79,7 +80,7 @@ export default function ScoreEditor({ active, audition, onPlayNote, onStopNote }
   function exportScore() {
     const url = URL.createObjectURL(new Blob([JSON.stringify(score, null, 2)], { type: 'application/json' }))
     const anchor = document.createElement('a'); anchor.href = url
-    anchor.download = `${score.title.replace(/[<>:"/\\|?*]/g, '_') || 'score'}.piano.json`
+    anchor.download = `${score.title.replace(/[<>:"/\\|?*]/g, '_') || 'score'}.notation.json`
     document.body.appendChild(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000)
     setMessage('已请求下载乐谱文件，请查看浏览器下载列表。')
   }

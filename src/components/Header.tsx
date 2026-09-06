@@ -10,7 +10,7 @@ interface HeaderProps {
 function Header({ workspace, disabled, onWorkspaceChange, controls }: HeaderProps) {
   return (
     <header className="app-header">
-      <h1>{workspace === 'trainer' ? 'Piano Trainer' : 'Score Editor'}</h1>
+      <h1>{workspace === 'trainer' ? 'Music Notation Studio' : 'Score Editor'}</h1>
       <div className="header-actions">
         {controls}
         <div className="workspace-tabs" role="tablist" aria-label="Workspace">

@@ -52,11 +52,11 @@
 .trainer-transport { border-top: 0; border-radius: 0 0 10px 10px; }
 @media (max-width: 700px) { .score-heading h2 { font-size: 21px; } .score-entry { gap: 10px; } .score-meta input { width: 190px; } }
 /* Keep the shared keyboard intact while giving the editor more vertical room. */
-.piano-trainer--score { gap: 10px; padding-top: 12px; }
-.piano-trainer--score .score-heading { margin-bottom: 10px; }
-.piano-trainer--score .score-heading h2 { font-size: 20px; }
-.piano-trainer--score .score-meta { margin-bottom: 10px; }
-.piano-trainer--score .score-entry { padding: 10px 14px; }
+.music-notation-studio--score { gap: 10px; padding-top: 12px; }
+.music-notation-studio--score .score-heading { margin-bottom: 10px; }
+.music-notation-studio--score .score-heading h2 { font-size: 20px; }
+.music-notation-studio--score .score-meta { margin-bottom: 10px; }
+.music-notation-studio--score .score-entry { padding: 10px 14px; }
 
 /* Compact, score-first editor layout. */
 .workspace-tabs {
@@ -520,7 +520,7 @@
   margin: 4px 0 0;
 }
 
-.piano-trainer--score {
+.music-notation-studio--score {
   gap: 8px;
 }
 

@@ -1,4 +1,4 @@
-# Piano Trainer 开发路线图
+# Music Notation Studio 开发路线图
 
 ## 乐谱工具方向（2026-09-05）
 
@@ -29,7 +29,7 @@
 
 ## 当前版本
 
-v0.5.0 Piano Trainer / Score Editor（Score Editor 第一版已发布）
+v0.5.0 Music Notation Studio / Score Editor（Score Editor 第一版已发布）
 
 - 第 3.1 阶段：双八度键盘，已完成
 - 第 3.2 阶段：声音控制，已完成

@@ -1,8 +1,12 @@
 # 变更日志
 
-本文件记录 Piano Trainer 各版本的重要功能与变更。
+本文件记录 Music Notation Studio 各版本的重要功能与变更。
 
 ## [v0.5.0] - 2026-09-06
+
+### 产品更名
+
+- 产品统一更名为 `Music Notation Studio`，仓库与 npm 包名统一为 `music-notation-studio`；`Trainer` 和 `Score Editor` 继续作为独立工作区保留。
 
 ### Score Editor 乐谱定位与横向节奏布局
 
@@ -52,7 +56,7 @@
 
 ### 乐谱编辑布局调整
 
-- 将 Trainer / Editor 工作区切换合并到应用标题栏，并随工作区显示 `Piano Trainer` 或 `Piano Editor`。
+- 将 Trainer / Editor 工作区切换合并到应用标题栏，并随工作区显示 `Music Notation Studio` 或 `Score Editor`。
 - 合并乐谱名称、文档摘要、文件操作和撤销 / 重做为紧凑文档栏。
 - 扩大并居中乐谱工作区，录入控制和选中音符工具在可用宽度内居中排列。
 - 写入时值和选中音符时值改为左右箭头步进，移除对应的下拉框。

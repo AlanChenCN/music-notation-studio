@@ -4,7 +4,8 @@ import {
   type AppSettings,
 } from './settings'
 
-export const SETTINGS_STORAGE_KEY = 'piano-trainer.settings'
+export const SETTINGS_STORAGE_KEY = 'music-notation-studio.settings'
+const LEGACY_SETTINGS_STORAGE_KEY = 'piano-trainer.settings'
 
 export function loadSettings(): AppSettings {
   const fallback = createDefaultSettings()
@@ -14,7 +15,7 @@ export function loadSettings(): AppSettings {
   }
 
   try {
-    const storedValue = window.localStorage.getItem(SETTINGS_STORAGE_KEY)
+    const storedValue = window.localStorage.getItem(SETTINGS_STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_SETTINGS_STORAGE_KEY)
 
     if (!storedValue) {
       return fallback
