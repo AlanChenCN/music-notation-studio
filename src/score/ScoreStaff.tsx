@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { midiNumberToPianoNote } from '../data/piano'
 import { getStaffNotePosition, getLedgerLineSteps, type StaffName } from '../data/staff'
 import { createGrandStaffGeometry, staffLineSteps } from '../data/staffGeometry'
@@ -17,6 +17,47 @@ const eventFrameTopY = staffTopY - 28
 const eventFrameBottomY = staffBottomEdgeY + 28
 const beatFraction = (value: number) => ({ .25: ['1', '4'], .5: ['1', '2'] } as Record<number, [string, string] | undefined>)[value]
 const isMeasureStart = (beat: number, beatsPerMeasure: number) => Math.abs(beat / beatsPerMeasure - Math.round(beat / beatsPerMeasure)) < .00001
+
+const ScoreRecognitionBand = memo(function ScoreRecognitionBand({ enabled, playX }: { enabled: boolean; playX: number }) {
+  if (!enabled) return null
+  return <rect className="score-practice-recognition-band" x={playX - 33} y={eventFrameTopY} width="66" height={eventFrameBottomY - eventFrameTopY} rx="8" pointerEvents="none" />
+})
+
+interface ScorePlaybackOverlayProps {
+  editCursorX: number
+  followLeft: boolean
+  hasScore: boolean
+  liveAtCursor: boolean
+  livePitches: number[]
+  liveWarningPitches: number[]
+  playX: number
+  playing: boolean
+  previewAnchorX: number
+  previewLayoutWidth: number
+}
+
+const ScorePlaybackOverlay = memo(function ScorePlaybackOverlay({ editCursorX, followLeft, hasScore, liveAtCursor, livePitches, liveWarningPitches, playX, playing, previewAnchorX, previewLayoutWidth }: ScorePlaybackOverlayProps) {
+  return <>
+    {!followLeft && <line className="score-edit-cursor" x1={editCursorX} x2={editCursorX} y1="48" y2="365" pointerEvents="none" />}
+    {hasScore && <line className={playing ? 'score-playback-cursor score-playback-cursor--active' : 'score-playback-cursor'} x1={playX} x2={playX} y1="48" y2="365" pointerEvents="none" />}
+    {!!livePitches.length && <g className="score-live-notes" aria-label={`实奏音符：${livePitches.map(p => midiNumberToPianoNote(p)?.name).join('、')}`} fill="none" stroke="var(--theme-accent-color)" strokeWidth="2.5" pointerEvents="none">
+      {livePitches.map((pitch, index) => {
+        const note = midiNumberToPianoNote(pitch)
+        if (!note) return null
+        const position = getStaffNotePosition(note)
+        const x = (liveAtCursor ? playX : previewAnchorX + previewLayoutWidth / 2) + 18 + (index % 2) * 10
+        const y = noteY(position.staff, position.staffStep)
+        const warning = liveWarningPitches.includes(pitch)
+        const liveColor = warning ? 'var(--theme-status-warning)' : 'var(--theme-accent-color)'
+        return <g key={pitch} data-live-pitch={pitch} data-live-warning={warning ? 'true' : undefined} stroke={liveColor}>
+          {getLedgerLineSteps(position.staffStep).map(step => <line key={step} x1={x - 13} x2={x + 13} y1={noteY(position.staff, step)} y2={noteY(position.staff, step)} />)}
+          <ellipse cx={x} cy={y} rx="9" ry="6" transform={`rotate(-15 ${x} ${y})`} />
+          {note.type === 'black' && <text x={x - 23} y={y + 5} fontSize="17" fill={liveColor} stroke="none">♯</text>}
+        </g>
+      })}
+    </g>}
+  </>
+})
 
 export default function ScoreStaff({ score, selected, beat, playing, previewPitches, previewDuration, insertionIndex, onSelect, onEnd, readOnly = false, followLeft = false, livePitches = [], liveWarningPitches = [], liveAtCursor = false, practiceRecognitionBand = false, practiceEventResults }: Props) {
   const paperRef = useRef<HTMLDivElement>(null)
@@ -51,7 +92,7 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
     : followLeft && beat > musicalEnd
       ? offset + (beat - musicalEnd) * 66
       : offset
-  useEffect(() => {
+  useLayoutEffect(() => {
     const paper = paperRef.current
     if (!paper || playing || followLeft) return
     const svg = paper.querySelector('svg')
@@ -64,7 +105,7 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
       paper.scrollTo({ left: Math.max(0, position - edge), behavior: 'smooth' })
     }
   }, [editCursorX, playing, width, followLeft])
-  useEffect(() => {
+  useLayoutEffect(() => {
     const paper = paperRef.current
     if (!paper || (!playing && !followLeft)) return
     const svg = paper.querySelector('svg')
@@ -208,26 +249,9 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
   return <div ref={paperRef} className="score-paper" aria-label="乐谱五线谱，可横向滚动">
     <div style={followLeft ? { width, paddingLeft: '20%', paddingRight: '80%', boxSizing: 'content-box' } : undefined}>
     <svg width={width} height="400" viewBox={`0 0 ${width} 400`} role="group" aria-label={`${score.timeSignature[0]}/${score.timeSignature[1]} 乐谱`}>
-      {practiceRecognitionBand && <rect className="score-practice-recognition-band" x={playX - 33} y={eventFrameTopY} width="66" height={eventFrameBottomY - eventFrameTopY} rx="8" pointerEvents="none" />}
+      <ScoreRecognitionBand enabled={practiceRecognitionBand} playX={playX} />
       {notation}
-      {!followLeft && <line className="score-edit-cursor" x1={editCursorX} x2={editCursorX} y1="48" y2="365" pointerEvents="none" />}
-      {scoreLength(score) > 0 && <line className={playing ? 'score-playback-cursor score-playback-cursor--active' : 'score-playback-cursor'} x1={playX} x2={playX} y1="48" y2="365" pointerEvents="none" />}
-      {!!livePitches.length && <g className="score-live-notes" aria-label={`实奏音符：${livePitches.map(p => midiNumberToPianoNote(p)?.name).join('、')}`} fill="none" stroke="var(--theme-accent-color)" strokeWidth="2.5" pointerEvents="none">
-        {livePitches.map((pitch, index) => {
-          const note = midiNumberToPianoNote(pitch)
-          if (!note) return null
-          const position = getStaffNotePosition(note)
-          const x = (liveAtCursor ? playX : previewAnchorX + previewLayoutWidth / 2) + 18 + (index % 2) * 10
-          const y = noteY(position.staff, position.staffStep)
-          const warning = liveWarningPitches.includes(pitch)
-          const liveColor = warning ? 'var(--theme-status-warning)' : 'var(--theme-accent-color)'
-          return <g key={pitch} data-live-pitch={pitch} data-live-warning={warning ? 'true' : undefined} stroke={liveColor}>
-            {getLedgerLineSteps(position.staffStep).map(step => <line key={step} x1={x - 13} x2={x + 13} y1={noteY(position.staff, step)} y2={noteY(position.staff, step)} />)}
-            <ellipse cx={x} cy={y} rx="9" ry="6" transform={`rotate(-15 ${x} ${y})`} />
-            {note.type === 'black' && <text x={x - 23} y={y + 5} fontSize="17" fill={liveColor} stroke="none">♯</text>}
-          </g>
-        })}
-      </g>}
+      <ScorePlaybackOverlay editCursorX={editCursorX} followLeft={followLeft} hasScore={scoreLength(score) > 0} liveAtCursor={liveAtCursor} livePitches={livePitches} liveWarningPitches={liveWarningPitches} playX={playX} playing={playing} previewAnchorX={previewAnchorX} previewLayoutWidth={previewLayoutWidth} />
     </svg>
     </div>
   </div>

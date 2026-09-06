@@ -34,8 +34,17 @@ export default function ScoreTrainer({ controller, active, inputHeld, onPlayNote
   }, [active, controller])
   useEffect(() => {
     if (!state.running) return
-    const timer = window.setInterval(controller.tick, timeline ? 16 : 1000)
-    return () => window.clearInterval(timer)
+    if (!timeline) {
+      const timer = window.setInterval(controller.tick, 1000)
+      return () => window.clearInterval(timer)
+    }
+    let frameId: number | null = null
+    const tick = () => {
+      controller.tick()
+      if (controller.getSnapshot().running) frameId = window.requestAnimationFrame(tick)
+    }
+    frameId = window.requestAnimationFrame(tick)
+    return () => { if (frameId !== null) window.cancelAnimationFrame(frameId) }
   }, [controller, state.running, timeline])
   function loadSaved() {
     try {

@@ -42,10 +42,9 @@ export default function ScoreEditor({ onPractice, inputHeld, active, audition, o
 
   useEffect(() => {
     if (!active) transport.pause()
-    const timer = window.setInterval(transport.tick, 16)
     const pauseHidden = () => { if (document.hidden) transport.pause() }
     document.addEventListener('visibilitychange', pauseHidden)
-    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', pauseHidden); transport.pause() }
+    return () => { document.removeEventListener('visibilitychange', pauseHidden); transport.pause() }
   }, [active, transport])
   useEffect(() => {
     if (!dirty) return

@@ -111,3 +111,25 @@ test('a late timer derives position from elapsed time rather than accumulating d
   assert.equal(p.transport.getSnapshot().beat, 3.5)
   assert.deepEqual(p.events.slice(-2), [['on', 64], ['on', 67]])
 })
+test('transport keeps one animation frame scheduled while playing', () => {
+  const previousRequest = globalThis.requestAnimationFrame
+  const previousCancel = globalThis.cancelAnimationFrame
+  const callbacks = new Map()
+  let nextId = 1
+  globalThis.requestAnimationFrame = callback => { const id = nextId++; callbacks.set(id, callback); return id }
+  globalThis.cancelAnimationFrame = id => { callbacks.delete(id) }
+  try {
+    const p = player()
+    p.transport.play()
+    p.transport.tick()
+    p.transport.tick()
+    assert.equal(callbacks.size, 1)
+    p.transport.pause()
+    assert.equal(callbacks.size, 0)
+  } finally {
+    if (previousRequest) globalThis.requestAnimationFrame = previousRequest
+    else delete globalThis.requestAnimationFrame
+    if (previousCancel) globalThis.cancelAnimationFrame = previousCancel
+    else delete globalThis.cancelAnimationFrame
+  }
+})

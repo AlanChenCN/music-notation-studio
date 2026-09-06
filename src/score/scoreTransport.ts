@@ -24,7 +24,13 @@ export class ScoreTransport {
   }
   private silence() { this.sounding.forEach(pitch => this.off(pitch)); this.sounding.clear() }
   private cancelTick() { if (this.frameId !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.frameId); this.frameId = null }
-  private scheduleTick() { if (typeof requestAnimationFrame === 'function') this.frameId = requestAnimationFrame(this.tick) }
+  private scheduleTick() {
+    if (typeof requestAnimationFrame !== 'function' || this.frameId !== null) return
+    this.frameId = requestAnimationFrame(() => {
+      this.frameId = null
+      this.tick()
+    })
+  }
   setScore(score: ScoreDocument) { this.pause(); this.score = score; this.seek(Math.min(this.snapshot.beat, scoreLength(score))) }
   play = () => {
     if (!scoreLength(this.score) || this.snapshot.playing) return
@@ -42,7 +48,6 @@ export class ScoreTransport {
     if (this.snapshot.playing) this.tick()
   }
   tick = () => {
-    this.frameId = null
     if (!this.snapshot.playing) return
     const beat = Math.min(scoreLength(this.score), this.anchorBeat + (this.now() - this.anchorTime) * this.score.tempo / 60000)
     if (beat >= scoreLength(this.score)) { this.silence(); this.publish(beat, false); return }
