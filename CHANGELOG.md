@@ -9,6 +9,7 @@
 - Keyboard Dock 控件改为紧凑单行布局：移除 Keyboard Mapping 可见标题，缩短 Labels 文案，并用右侧状态灯表示 Sound 与统一 MIDI 状态；USB / Bluetooth MIDI 在同一 MIDI 面板中分别管理。
 - 固定 Labels、Sound 与 MIDI 按钮宽度，避免模式或状态文字改变时产生布局抖动；Keyboard Mapping 选择弹窗改用更紧凑的七列选项并统一标题。
 - 将 Labels、Sound 与 MIDI 的固定宽度调整为可完整容纳文案；Keyboard Mapping 改为每行七个接近正方形的音域按钮，对齐一个八度的七个白键。
+- Keyboard Dock 最右侧新增与播放控件同规格的折叠按钮；收起时隐藏钢琴键、同步缩短底部 Dock 与页面预留空间，并保留所有输入功能，状态会在刷新后恢复。
 - Editor 工作区标题统一为 `Score Editor`。
 - 乐谱横向布局改为按拍格分配空间：长时值占据更多宽度，短时值维持紧凑且可读的最小间距。
 - 分离编辑与播放光标的视觉标记；编辑位置切换时自动居中，播放时仅在播放光标越出中央安全区后横向跟随。

@@ -70,6 +70,13 @@ function App() {
   const [playbackNotes, setPlaybackNotes] = useState<string[]>([])
   const [practicePlayback, setPracticePlayback] = useState({ beat: 0, playing: false })
   const [pressedNotes, setPressedNotes] = useState<string[]>([])
+  const [keyDockCollapsed, setKeyDockCollapsed] = useState(() => {
+    try {
+      return window.localStorage.getItem('piano-trainer.key-dock-collapsed') === 'true'
+    } catch {
+      return false
+    }
+  })
   const [midiPanelOpen, setMidiPanelOpen] = useState(false)
   const [midiDeviceName, setMidiDeviceName] = useState<string | null>(null)
   const [midiConnectionState, setMidiConnectionState] =
@@ -80,6 +87,15 @@ function App() {
   const [bluetoothConnectionState, setBluetoothConnectionState] =
     useState<InputConnectionState>('disconnected')
   const midiButtonRef = useRef<HTMLButtonElement>(null)
+
+  const handleKeyDockCollapsedChange = useCallback((collapsed: boolean) => {
+    setKeyDockCollapsed(collapsed)
+    try {
+      window.localStorage.setItem('piano-trainer.key-dock-collapsed', String(collapsed))
+    } catch {
+      // The dock remains usable when local storage is unavailable.
+    }
+  }, [])
   const [systemThemePreset, setSystemThemePreset] = useState<ThemePreset>(
     getSystemThemePreset,
   )
@@ -424,7 +440,7 @@ function App() {
   }, [])
 
   return (
-    <div className={`piano-trainer${workspace === 'score' ? ' piano-trainer--score' : ''}`}>
+    <div className={`piano-trainer${workspace === 'score' ? ' piano-trainer--score' : ''}${keyDockCollapsed ? ' piano-trainer--key-dock-collapsed' : ''}`}>
       <Header
         workspace={workspace}
         disabled={pressedNotes.length > 0}
@@ -485,6 +501,8 @@ function App() {
         midiConnectionState={midiConnectionState}
         onMidiConnect={() => setMidiPanelOpen(true)}
         bluetoothConnectionState={bluetoothConnectionState}
+        keyDockCollapsed={keyDockCollapsed}
+        onKeyDockCollapsedChange={handleKeyDockCollapsedChange}
       />
 
       <MidiPanel

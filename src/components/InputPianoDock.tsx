@@ -24,6 +24,8 @@ interface InputPianoDockProps {
   midiConnectionState: InputConnectionState
   bluetoothConnectionState: InputConnectionState
   onMidiConnect: () => void
+  keyDockCollapsed: boolean
+  onKeyDockCollapsedChange: (collapsed: boolean) => void
 }
 
 function labelModeText(labelMode: PianoLabelMode) {
@@ -56,6 +58,8 @@ function InputPianoDock({
   midiConnectionState,
   bluetoothConnectionState,
   onMidiConnect,
+  keyDockCollapsed,
+  onKeyDockCollapsedChange,
 }: InputPianoDockProps) {
   const [keyboardBasePopoverOpen, setKeyboardBasePopoverOpen] = useState(false)
   const [keyLabelsPopoverOpen, setKeyLabelsPopoverOpen] = useState(false)
@@ -157,6 +161,21 @@ function InputPianoDock({
             >
               <span className="button-label">MIDI</span>
               <span className="status-indicator" aria-hidden="true">●</span>
+            </button>
+            <span className="dock-control-divider" aria-hidden="true" />
+            <button
+              className="app-button app-button--compact dock-toggle-button"
+              type="button"
+              aria-expanded={!keyDockCollapsed}
+              aria-label={keyDockCollapsed ? '展开钢琴键盘' : '收起钢琴键盘'}
+              title={keyDockCollapsed ? '展开钢琴键盘' : '收起钢琴键盘'}
+              onClick={() => onKeyDockCollapsedChange(!keyDockCollapsed)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="4" y="4" width="16" height="10" rx="1.5" />
+                <path d="M7 8h10M7 11h2m2 0h2m2 0h2" />
+                <path className="dock-toggle-chevron" d={keyDockCollapsed ? 'm8 19 4-4 4 4' : 'm8 16 4 4 4-4'} />
+              </svg>
             </button>
           </div>
         </div>

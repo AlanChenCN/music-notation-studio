@@ -46,6 +46,18 @@
 
 }
 
+.piano-trainer--key-dock-collapsed {
+
+  --piano-dock-height: calc(var(--input-controls-height) + 24px);
+
+}
+
+.piano-trainer--key-dock-collapsed .piano-viewport {
+
+  display: none;
+
+}
+
 .header-actions,
 .global-controls {
   display: flex;
@@ -896,6 +908,60 @@
   padding: 6px 10px;
 
   gap: 6px;
+
+}
+
+.dock-control-divider {
+
+  width: 1px;
+
+  height: 24px;
+
+  margin-inline: 2px;
+
+  background: var(--theme-border-color);
+
+}
+
+.input-controls .dock-toggle-button {
+
+  flex: 0 0 34px;
+
+  width: 34px;
+
+  min-width: 34px;
+
+  height: 34px;
+
+  min-height: 34px;
+
+  padding: 0;
+
+}
+
+.dock-toggle-button svg {
+
+  display: block;
+
+  width: 17px;
+
+  height: 17px;
+
+  fill: none;
+
+  stroke: currentColor;
+
+  stroke-linecap: round;
+
+  stroke-linejoin: round;
+
+  stroke-width: 1.7;
+
+}
+
+.dock-toggle-button svg rect {
+
+  fill: none;
 
 }
 
