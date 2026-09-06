@@ -24,6 +24,8 @@
 
   min-width: 0;
 
+  transition: padding-bottom 240ms ease-out;
+
 }
 
 .app-header {
@@ -54,7 +56,11 @@
 
 .piano-trainer--key-dock-collapsed .piano-viewport {
 
-  display: none;
+  max-height: 0;
+
+  opacity: 0;
+
+  pointer-events: none;
 
 }
 
@@ -585,6 +591,8 @@
   border-top: 1px solid var(--theme-border-color);
 
   background: var(--theme-surface-background);
+
+  transition: height 240ms ease-out;
 
 }
 
@@ -1807,6 +1815,24 @@
   overflow-x: hidden;
 
   overflow-y: hidden;
+
+  max-height: var(--piano-white-height);
+
+  opacity: 1;
+
+  transition: max-height 240ms ease-out, opacity 160ms ease-out;
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .piano-trainer,
+  .piano-dock,
+  .piano-viewport {
+
+    transition: none;
+
+  }
 
 }
 

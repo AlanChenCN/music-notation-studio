@@ -185,6 +185,7 @@ function InputPianoDock({
           labelMode={labelMode}
           onPress={onPress}
           onRelease={onRelease}
+          hidden={keyDockCollapsed}
         />
       </div>
 

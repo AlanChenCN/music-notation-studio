@@ -10,6 +10,7 @@ interface PianoProps {
   labelMode: PianoLabelMode
   onPress: (noteName: string) => void
   onRelease: (noteName: string) => void
+  hidden?: boolean
 }
 
 function Piano({
@@ -17,12 +18,13 @@ function Piano({
   labelMode,
   onPress,
   onRelease,
+  hidden = false,
 }: PianoProps) {
   const whiteKeys = pianoNotes.filter(note => note.type === "white")
   const blackKeys = pianoNotes.filter(note => note.type === "black")
 
   return (
-    <div className="piano-viewport">
+    <div className="piano-viewport" aria-hidden={hidden}>
       <div className="piano">
         <div className="white-keys">
           {whiteKeys.map(note => (
