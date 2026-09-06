@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { type Ref, useImperativeHandle, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { midiNumberToPianoNote } from '../data/piano'
 import { createScore, deleteEvent, durations, insertEvent, parseScore, replaceEvent, scoreLength, timeSignaturePresets, type ScoreDocument } from './scoreModel'
 import { ScoreTransport } from './scoreTransport'
@@ -16,8 +16,9 @@ function loadDraft() {
 const names = (pitches: number[]) => pitches.map(pitch => midiNumberToPianoNote(pitch)?.name).join(' · ')
 const noteFractions: Record<number, string> = { .25: '1/16', .5: '1/8', 1: '1/4', 2: '1/2', 4: '1' }
 const beatFractions: Record<number, string> = { .25: '1/4', .5: '1/2', 1: '1', 2: '2', 4: '4' }
-interface Props { onPractice: (score: ScoreDocument) => void; inputHeld: boolean; active: boolean; audition: number[]; onPlayNote: (pitch: number) => void; onStopNote: (pitch: number) => void }
-export default function ScoreEditor({ onPractice, inputHeld, active, audition, onPlayNote, onStopNote }: Props) {
+export interface ScoreEditorHandle { openScore: (score: ScoreDocument) => boolean }
+interface Props { ref?: Ref<ScoreEditorHandle>; onPractice: (score: ScoreDocument) => void; inputHeld: boolean; active: boolean; audition: number[]; onPlayNote: (pitch: number) => void; onStopNote: (pitch: number) => void }
+export default function ScoreEditor({ ref, onPractice, inputHeld, active, audition, onPlayNote, onStopNote }: Props) {
   const [initial] = useState(loadDraft)
   const [score, setScore] = useState(initial.score)
   const [saved, setSaved] = useState(JSON.stringify(initial.score))
@@ -61,6 +62,16 @@ export default function ScoreEditor({ onPractice, inputHeld, active, audition, o
     document.addEventListener('focusin', cancel)
     return () => { document.removeEventListener('pointerdown', cancel); document.removeEventListener('focusin', cancel) }
   }, [confirmClearAll])
+
+  useImperativeHandle(ref, () => ({
+    openScore(next) {
+      if (inputHeld) return false
+      if ((dirty || score.events.length > 0) && !window.confirm('将随机练习谱送入 Editor 并替换当前内容？原内容可通过撤销恢复，本地保存不会被覆盖。')) return false
+      change(structuredClone(next)); setSelected(null); transport.stop()
+      setMessage('已接收随机练习谱，可继续编辑；保存后才会替换本地草稿。')
+      return true
+    },
+  }))
 
   function change(next: ScoreDocument) {
     transport.setScore(next)

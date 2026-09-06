@@ -4,21 +4,19 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from 'react'
+import RandomTrainer from './practice/RandomTrainer'
+import FreePlay from './practice/FreePlay'
 import ScoreTrainer from './practice/ScoreTrainer'
 import { ScorePractice } from './practice/scorePractice'
 import type { ScoreDocument } from './score/scoreModel'
-import ScoreEditor from './score/ScoreEditor'
-import GrandStaff from './components/GrandStaff'
+import ScoreEditor, { type ScoreEditorHandle } from './score/ScoreEditor'
 import Header from './components/Header'
 import GlobalControls from './components/GlobalControls'
 import InputPianoDock from './components/InputPianoDock'
 import type { InputConnectionState } from './components/InputDeviceButton'
 import MidiPanel from './components/MidiPanel'
 import StatusBar from './components/StatusBar'
-import Toolbar from './components/Toolbar'
-import PracticeTransport from './practice/PracticeTransport'
 import type { ConfigurableThemeToken } from './components/ThemePopover'
 import { setAudioEnabled, startNote, stopNote } from './audio/sound'
 import {
@@ -49,13 +47,6 @@ import {
   type ThemePreset,
   type ThemeMode,
 } from './theme/theme'
-import { NoteEventFactory } from './music/noteEvent'
-import { analyzeChord } from './music/chordAnalyzer'
-import { PracticeController } from './practice/practiceController'
-import {
-  createPracticeSettings,
-  type PracticeSettings,
-} from './practice/practiceTypes'
 import { useSettings } from './settings/useSettings'
 import './App.css'
 
@@ -68,13 +59,17 @@ function App() {
   } = useSettings()
   const [workspace, setWorkspace] = useState<'trainer' | 'score'>('score')
   const workspaceRef = useRef<'trainer' | 'score'>('score')
-  const [trainerSource, setTrainerSource] = useState<'score' | 'random'>('score')
-  const trainerSourceRef = useRef<'score' | 'random'>('score')
+  const [trainerSource, setTrainerSource] = useState<'score' | 'random' | 'free'>('score')
+  const trainerSourceRef = useRef<'score' | 'random' | 'free'>('score')
   const scorePractice = useMemo(() => new ScorePractice(), [])
+  const randomPractice = useMemo(() => new ScorePractice(), [])
+  const editorRef = useRef<ScoreEditorHandle>(null)
+  const liveHeld = useRef(new Map<string, string>())
+  const freeAudition = useRef<string[]>([])
+  const [recentFreeNotes, setRecentFreeNotes] = useState<string[]>([])
   const heldAudition = useRef(new Set<string>())
   const [audition, setAudition] = useState<number[]>([])
   const [playbackNotes, setPlaybackNotes] = useState<string[]>([])
-  const [practicePlayback, setPracticePlayback] = useState({ beat: 0, playing: false })
   const [pressedNotes, setPressedNotes] = useState<string[]>([])
   const [keyDockCollapsed, setKeyDockCollapsed] = useState(() => {
     try {
@@ -121,33 +116,6 @@ function App() {
   const [keyboardBaseNote, setKeyboardBaseNote] = useState<KeyboardBaseNote>(
     defaultKeyboardBaseNote,
   )
-  const noteEventFactory = useMemo(() => new NoteEventFactory(), [])
-  const practiceController = useMemo(() => new PracticeController(), [])
-  const practiceSnapshot = useSyncExternalStore(
-    practiceController.subscribe,
-    practiceController.getSnapshot,
-    practiceController.getSnapshot,
-  )
-  const practiceSettingsSynced = useRef(false)
-
-  useEffect(() => {
-    if (practiceSettingsSynced.current) {
-      return
-    }
-
-    practiceSettingsSynced.current = true
-    practiceController.updateSettings(settings.practice)
-  }, [practiceController, settings.practice])
-  const currentChord = useMemo(
-    () =>
-      analyzeChord(
-        pressedNotes
-          .map(noteName => pianoNotes.find(note => note.name === noteName))
-          .filter((note): note is (typeof pianoNotes)[number] => note !== undefined),
-      ),
-    [pressedNotes],
-  )
-
   const pressNote = useCallback((
     noteName: string,
     context: InputNoteContext = { source: 'mouse' },
@@ -168,28 +136,18 @@ function App() {
       const pitches = [...heldAudition.current].map(key => pianoNoteToMidiNumber(key.slice(key.indexOf(':') + 1))!)
       setAudition([...new Set(pitches)].sort((a, b) => a - b))
     }
-    const event = noteEventFactory.create({
-      note,
-      source: context.source,
-      velocity: context.velocity,
-    })
-
-    if (event && workspaceRef.current === 'trainer' && trainerSourceRef.current === 'random') {
-      practiceController.handleNoteEvent(event)
+    const key = `${context.source}:${noteName}`
+    liveHeld.current.set(key, noteName)
+    const liveNames = [...new Set(liveHeld.current.values())]
+    if (workspaceRef.current === 'trainer') {
+      if (trainerSourceRef.current === 'score') scorePractice.press(key, pianoNoteToMidiNumber(note)!)
+      else if (trainerSourceRef.current === 'random') randomPractice.press(key, pianoNoteToMidiNumber(note)!)
+      else freeAudition.current = liveNames.sort((a, b) => pianoNoteToMidiNumber(a)! - pianoNoteToMidiNumber(b)!)
     }
-
-    if (workspaceRef.current === 'trainer' && trainerSourceRef.current === 'score') scorePractice.press(`${context.source}:${noteName}`, pianoNoteToMidiNumber(note)!)
-
-    setPressedNotes(prev => {
-      if (prev.includes(noteName)) {
-        return prev
-      }
-
-      return [...prev, noteName]
-    })
+    setPressedNotes(liveNames)
 
     startNote(`${context.source}:${note.name}`, note.frequency, context.velocity)
-  }, [noteEventFactory, practiceController, scorePractice])
+  }, [randomPractice, scorePractice])
 
   const releaseNote = useCallback((
     noteName: string,
@@ -200,28 +158,15 @@ function App() {
       setPlaybackNotes(prev => prev.filter(name => name !== noteName))
       return
     }
-    scorePractice.release(`${context.source}:${noteName}`)
-    heldAudition.current.delete(`${context.source}:${noteName}`)
-    const note = pianoNotes.find(item => item.name === noteName)
-
-    if (note) {
-      const midiNumber = pianoNoteToMidiNumber(note)
-
-      if (midiNumber !== undefined) {
-        const event = noteEventFactory.close({
-          midiNumber,
-          source: context.source,
-        })
-
-        if (event && workspaceRef.current === 'trainer' && trainerSourceRef.current === 'random') {
-          practiceController.handleNoteRelease(event)
-        }
-      }
-    }
-
-    setPressedNotes(prev => prev.filter(item => item !== noteName))
+    const key = `${context.source}:${noteName}`
+    scorePractice.release(key)
+    randomPractice.release(key)
+    heldAudition.current.delete(key)
+    const released = liveHeld.current.delete(key)
+    if (released && !liveHeld.current.size && workspaceRef.current === 'trainer' && trainerSourceRef.current === 'free') setRecentFreeNotes([...freeAudition.current])
+    setPressedNotes([...new Set(liveHeld.current.values())])
     stopNote(`${context.source}:${noteName}`)
-  }, [noteEventFactory, practiceController, scorePractice])
+  }, [randomPractice, scorePractice])
 
   const inputLayer = useMemo(
     // InputLayer only stores callbacks; it never invokes them during construction.
@@ -238,10 +183,6 @@ function App() {
     const note = midiNumberToPianoNote(pitch)
     if (note) inputLayer.releaseNote(note.name, { source: 'playback' })
   }, [inputLayer])
-  const handlePracticePlaybackChange = useCallback((beat: number, playing: boolean) => {
-    setPracticePlayback(current => current.beat === beat && current.playing === playing ? current : { beat, playing })
-  }, [])
-
   const keyboardController = useMemo(
     () => new KeyboardController(inputLayer, defaultKeyboardBaseNote),
     [inputLayer],
@@ -338,20 +279,6 @@ function App() {
     }))
   }, [updateSettings])
 
-  const handlePracticeSettingsChange = useCallback(
-    (updates: Partial<PracticeSettings>) => {
-      updateSettings(current => ({
-        ...current,
-        practice: {
-          ...current.practice,
-          ...updates,
-        },
-      }))
-      practiceController.updateSettings(updates)
-    },
-    [practiceController, updateSettings],
-  )
-
   const handleAutoSaveChange = useCallback(
     (enabled: boolean) => {
       updateSettings(current => ({ ...current, autoSave: enabled }))
@@ -365,8 +292,7 @@ function App() {
 
   const handleResetSettings = useCallback(() => {
     resetSettings()
-    practiceController.updateSettings(createPracticeSettings())
-  }, [practiceController, resetSettings])
+  }, [resetSettings])
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
@@ -401,14 +327,14 @@ function App() {
     return () => {
       midiInputController.reset()
       void bluetoothMidiController.disconnect()
-      noteEventFactory.reset()
-      practiceController.selectMode('free-play')
+      scorePractice.pause()
+      randomPractice.pause()
     }
   }, [
     bluetoothMidiController,
     midiInputController,
-    noteEventFactory,
-    practiceController,
+    scorePractice,
+    randomPractice,
   ])
 
   const handleMidiConnectionChange = useCallback(
@@ -444,10 +370,11 @@ function App() {
 
   const handleWorkspaceChange = useCallback((nextWorkspace: 'trainer' | 'score') => {
     scorePractice.pause()
+    randomPractice.pause()
     workspaceRef.current = nextWorkspace
     heldAudition.current.clear()
     setWorkspace(nextWorkspace)
-  }, [scorePractice])
+  }, [scorePractice, randomPractice])
 
   const practiceScore = useCallback((score: ScoreDocument) => {
     scorePractice.load(score)
@@ -465,44 +392,14 @@ function App() {
       />
       <main className="main-content">
         <div className="trainer-panel" id="trainer-panel" role="tabpanel" aria-labelledby="trainer-tab" hidden={workspace !== 'trainer'}>
-        <div className="score-editor trainer-source" aria-label="练习来源"><button disabled={pressedNotes.length > 0} aria-pressed={trainerSource === 'score'} onClick={() => { scorePractice.pause(); trainerSourceRef.current = 'score'; setTrainerSource('score') }}>乐谱跟练</button><button disabled={pressedNotes.length > 0} aria-pressed={trainerSource === 'random'} onClick={() => { scorePractice.pause(); trainerSourceRef.current = 'random'; setTrainerSource('random') }}>随机练习 / 自由弹奏</button></div>
+        <div className="score-editor trainer-source" aria-label="练习来源">
+          {([['score', '乐谱跟练'], ['random', '随机练习'], ['free', '自由弹奏']] as const).map(([source, label]) => <button key={source} disabled={pressedNotes.length > 0} aria-pressed={trainerSource === source} onClick={() => { scorePractice.pause(); randomPractice.pause(); trainerSourceRef.current = source; setTrainerSource(source) }}>{label}</button>)}
+        </div>
         <ScoreTrainer controller={scorePractice} active={workspace === 'trainer' && trainerSource === 'score'} inputHeld={pressedNotes.length > 0} onPlayNote={playScoreNote} onStopNote={stopScoreNote} />
-        <div hidden={trainerSource !== 'random'}>
-        <Toolbar
-          noteDisplayMode={noteDisplayMode}
-          onNoteDisplayModeChange={handleNoteDisplayModeChange}
-          practiceSelection={practiceSnapshot.selection}
-          practiceSettings={settings.practice}
-          onPracticeSelectionChange={practiceController.selectMode}
-          onPracticeSettingsChange={handlePracticeSettingsChange}
-        />
-        <GrandStaff
-          pressedNotes={pressedNotes}
-          targetNotes={
-            practiceSnapshot.session?.currentTask?.targetNotes ?? []
-          }
-          practicePhrase={practiceSnapshot.session?.phrase ?? null}
-          currentTargetIndex={
-            practiceSnapshot.session?.cursor.noteIndex ?? -1
-          }
-          playbackBeat={practicePlayback.beat}
-          playbackActive={practicePlayback.playing}
-          practiceType={settings.practice.practiceType}
-          noteDisplayMode={noteDisplayMode}
-          practiceNoteNameMode={settings.practice.noteNameMode}
-          chord={currentChord}
-        />
-        <PracticeTransport
-          phrase={practiceSnapshot.session?.phrase ?? null}
-          enabled={workspace === 'trainer' && trainerSource === 'random' && practiceSnapshot.selection === 'note-practice'}
-          currentTargetIndex={practiceSnapshot.session?.cursor.noteIndex ?? -1}
-          onPlayNote={playScoreNote}
-          onStopNote={stopScoreNote}
-          onPlaybackChange={handlePracticePlaybackChange}
-        />
+        <RandomTrainer controller={randomPractice} active={workspace === 'trainer' && trainerSource === 'random'} inputHeld={pressedNotes.length > 0} onPlayNote={playScoreNote} onStopNote={stopScoreNote} onSendToEditor={score => { if (editorRef.current?.openScore(score)) handleWorkspaceChange('score') }} />
+        <FreePlay active={workspace === 'trainer' && trainerSource === 'free'} pressedNotes={pressedNotes} recentNotes={recentFreeNotes} onClear={() => { freeAudition.current = []; setRecentFreeNotes([]) }} display={noteDisplayMode} onDisplayChange={handleNoteDisplayModeChange} />
         </div>
-        </div>
-        <ScoreEditor onPractice={practiceScore} inputHeld={pressedNotes.length > 0} active={workspace === 'score'} audition={audition} onPlayNote={playScoreNote} onStopNote={stopScoreNote} />
+        <ScoreEditor ref={editorRef} onPractice={practiceScore} inputHeld={pressedNotes.length > 0} active={workspace === 'score'} audition={audition} onPlayNote={playScoreNote} onStopNote={stopScoreNote} />
         <div className="trainer-status" hidden={workspace !== 'trainer'}><StatusBar keyboardBaseNote={keyboardBaseNote} midiDeviceName={midiDeviceName} bluetoothMidiDeviceName={bluetoothMidiDeviceName} /></div>
         <div className="score-status" hidden={workspace !== 'score'}><StatusBar keyboardBaseNote={keyboardBaseNote} midiDeviceName={midiDeviceName} bluetoothMidiDeviceName={bluetoothMidiDeviceName} /></div>
       </main>

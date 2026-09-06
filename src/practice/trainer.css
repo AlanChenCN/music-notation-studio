@@ -19,3 +19,25 @@
 
 .trainer-mode select { min-height: 34px; padding: 6px 10px; }
 .trainer-live-status { color: var(--theme-accent-color); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+/* Random generation stays separate from the shared performance controls. */
+.random-document-info { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 14px; min-width: 0; }
+.random-document-info strong { color: var(--theme-heading-color); }
+.random-document-bar { flex-wrap: wrap; }
+.random-settings { border: 1px solid var(--theme-border-color); background: var(--theme-surface-background); border-radius: 9px; padding: 10px 14px; margin-bottom: 10px; }
+.random-settings-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 12px; }
+.random-settings-heading > label { margin-left: auto; flex-direction: row; align-items: center; }
+.random-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px 14px; margin-top: 12px; }
+.random-settings select, .random-settings button { min-height: 34px; padding: 5px 9px; }
+.random-settings fieldset { border: 1px solid var(--theme-border-color); border-radius: 7px; min-width: 0; padding: 8px 10px; font-size: 12px; }
+.random-settings legend { padding: 0 5px; }
+.random-settings .random-check { display: inline-flex; flex-direction: row; align-items: center; gap: 5px; margin-right: 15px; line-height: 28px; }
+.random-check input { accent-color: var(--theme-accent-color); }
+.random-durations { margin-top: 12px; }
+.random-advanced { margin-top: 12px; }
+.random-advanced summary { cursor: pointer; font-size: 12px; }
+.random-error { color: var(--theme-warning-color, #e5a34a); font-size: 13px; line-height: 1.5; margin-bottom: 0; }
+.free-play .grand-staff { width: 100%; margin: 0; border-radius: 0 0 9px 9px; box-sizing: border-box; }
+.free-play .score-hint { line-height: 1.7; }
+.free-play-info { min-height: 22px; }
+.trainer-source { flex-wrap: wrap; }

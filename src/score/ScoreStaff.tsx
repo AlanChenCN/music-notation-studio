@@ -1,4 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { practiceNoteNameFor, type PracticeNoteNameMode } from '../music/noteDisplay'
 import { midiNumberToPianoNote } from '../data/piano'
 import { getStaffNotePosition, getLedgerLineSteps, type StaffName } from '../data/staff'
 import { createGrandStaffGeometry, staffLineSteps } from '../data/staffGeometry'
@@ -6,7 +7,7 @@ import { notationSegments } from './notation'
 import { measureBeats, scoreLength, type ScoreDocument } from './scoreModel'
 
 export type ScoreEventFeedbackStatus = 'hit' | 'correct' | 'missed'
-interface Props { followLeft?: boolean; livePitches?: number[]; liveWarningPitches?: number[]; liveAtCursor?: boolean; practiceRecognitionBand?: boolean; practiceEventResults?: Readonly<Record<string, ScoreEventFeedbackStatus>>; readOnly?: boolean; score: ScoreDocument; selected: string | null; beat: number; playing: boolean; previewPitches: number[]; previewDuration: number; insertionIndex: number; onSelect: (id: string) => void; onEnd: () => void }
+interface Props { noteNameMode?: PracticeNoteNameMode; followLeft?: boolean; livePitches?: number[]; liveWarningPitches?: number[]; liveAtCursor?: boolean; practiceRecognitionBand?: boolean; practiceEventResults?: Readonly<Record<string, ScoreEventFeedbackStatus>>; readOnly?: boolean; score: ScoreDocument; selected: string | null; beat: number; playing: boolean; previewPitches: number[]; previewDuration: number; insertionIndex: number; onSelect: (id: string) => void; onEnd: () => void }
 
 const { staffBottomY, noteY } = createGrandStaffGeometry(199, 6)
 const staffTopY = noteY('treble', 8)
@@ -59,7 +60,7 @@ const ScorePlaybackOverlay = memo(function ScorePlaybackOverlay({ editCursorX, f
   </>
 })
 
-export default function ScoreStaff({ score, selected, beat, playing, previewPitches, previewDuration, insertionIndex, onSelect, onEnd, readOnly = false, followLeft = false, livePitches = [], liveWarningPitches = [], liveAtCursor = false, practiceRecognitionBand = false, practiceEventResults }: Props) {
+export default function ScoreStaff({ noteNameMode = 'hidden', score, selected, beat, playing, previewPitches, previewDuration, insertionIndex, onSelect, onEnd, readOnly = false, followLeft = false, livePitches = [], liveWarningPitches = [], liveAtCursor = false, practiceRecognitionBand = false, practiceEventResults }: Props) {
   const paperRef = useRef<HTMLDivElement>(null)
   const followPosition = useRef(0)
   const beatsPerMeasure = measureBeats(score.timeSignature)
@@ -211,6 +212,7 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
               fontWeight="700"
               pointerEvents="none"
             >{feedbackStatus === 'correct' ? '✓' : '×'}</text>}
+            {noteNameMode !== 'hidden' && !segment.tiedFrom && segment.pitches.length > 0 && <text className="score-practice-note-name" x={x} y="350" fill="var(--theme-text-color)" fontSize="11" textAnchor="middle" textLength={Math.min(segment.pitches.map(p => practiceNoteNameFor(midiNumberToPianoNote(p)!, noteNameMode)).join(' · ').length * 6, widths[index] - 12)} lengthAdjust="spacingAndGlyphs">{segment.pitches.map(p => practiceNoteNameFor(midiNumberToPianoNote(p)!, noteNameMode)).join(' · ')}</text>}
             {beatFraction(segment.duration)
               ? <g fill="var(--theme-text-color)" stroke="var(--theme-text-color)" strokeWidth="1" fontSize="10" textAnchor="middle"><text x={xs[index] + 12} y="365" stroke="none">{beatFraction(segment.duration)?.[0]}</text><line x1={xs[index] + 7} x2={xs[index] + 17} y1="369" y2="369" /><text x={xs[index] + 12} y="380" stroke="none">{beatFraction(segment.duration)?.[1]}</text><text x={xs[index] + 25} y="376" textAnchor="start" stroke="none">b</text></g>
               : <text x={xs[index] + 6} y="374" fill="var(--theme-text-color)" fontSize="12">{segment.duration} b{segment.tiedFrom && segment.pitches.length ? ' · 延音' : ''}</text>}
@@ -245,7 +247,7 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
         <text x={offset + 25} y={(staffTopY + staffBottomEdgeY) / 2 + 8} fill="var(--theme-accent-color)" fontSize="24">+</text>
       </g>
       }
-    </g>, [readOnly, segments, widths, xs, offset, width, eventById, firstSegmentIndex, selected, practiceEventResults, previewAnchorX, previewLayoutWidth, previewPitches, previewDuration, beatsPerMeasure, score.timeSignature, onSelect, onEnd])
+    </g>, [noteNameMode, readOnly, segments, widths, xs, offset, width, eventById, firstSegmentIndex, selected, practiceEventResults, previewAnchorX, previewLayoutWidth, previewPitches, previewDuration, beatsPerMeasure, score.timeSignature, onSelect, onEnd])
   return <div ref={paperRef} className="score-paper" aria-label="乐谱五线谱，可横向滚动">
     <div style={followLeft ? { width, paddingLeft: '20%', paddingRight: '80%', boxSizing: 'content-box' } : undefined}>
     <svg width={width} height="400" viewBox={`0 0 ${width} 400`} role="group" aria-label={`${score.timeSignature[0]}/${score.timeSignature[1]} 乐谱`}>
