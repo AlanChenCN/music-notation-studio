@@ -901,25 +901,25 @@
 
 .input-controls .dock-option-button {
 
-  flex: 0 0 112px;
+  flex: 0 0 136px;
 
-  width: 112px;
+  width: 136px;
 
-  min-width: 112px;
+  min-width: 136px;
 
-  max-width: 112px;
+  max-width: 136px;
 
 }
 
 .input-controls .dock-status-button {
 
-  flex: 0 0 72px;
+  flex: 0 0 88px;
 
-  width: 72px;
+  width: 88px;
 
-  min-width: 72px;
+  min-width: 88px;
 
-  max-width: 72px;
+  max-width: 88px;
 
 }
 
@@ -1498,7 +1498,7 @@
 
   display: grid;
 
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 
   gap: 6px;
 
@@ -1508,9 +1508,11 @@
 
   width: 100%;
 
-  min-height: 30px;
+  min-height: 0;
 
-  padding: 5px 6px;
+  height: 36px;
+
+  padding: 0;
 
   font-size: 13px;
 
