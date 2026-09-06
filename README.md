@@ -6,7 +6,7 @@ A browser-based music notation and practice tool built with React and TypeScript
 
 ## Trainer / 乐谱跟练（v0.6.0 开发中）
 
-在 Editor 点击「去练习」可练习当前乐谱；Trainer 也能载入本地已保存乐谱。支持逐音练习与按 BPM 时间轴跟弹、按完整事件时值识别、谱面即时正确／警告反馈、小节范围、循环、示范播放和本轮成绩，保留原有随机练习与自由弹奏。练习副本不会修改 Editor 原谱。
+在 Editor 点击「去练习」可练习当前乐谱；Trainer 也能载入本地已保存乐谱。支持逐音练习与按 BPM 时间轴跟弹、固定轴识别区间、严格顺序判定、谱面即时正确／警告反馈、小节范围、循环、示范播放和本轮成绩，保留原有随机练习与自由弹奏。练习副本不会修改 Editor 原谱。
 
 See [TRAINER.md](TRAINER.md) for score practice, range selection, scoring, and limits.
 

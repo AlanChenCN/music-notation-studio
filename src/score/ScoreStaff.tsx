@@ -6,7 +6,7 @@ import { notationSegments } from './notation'
 import { measureBeats, scoreLength, type ScoreDocument } from './scoreModel'
 
 export type ScoreEventFeedbackStatus = 'hit' | 'correct' | 'missed'
-interface Props { followLeft?: boolean; livePitches?: number[]; liveWarningPitches?: number[]; liveAtCursor?: boolean; practiceActiveEventId?: string | null; practiceEventResults?: Readonly<Record<string, ScoreEventFeedbackStatus>>; readOnly?: boolean; score: ScoreDocument; selected: string | null; beat: number; playing: boolean; previewPitches: number[]; previewDuration: number; insertionIndex: number; onSelect: (id: string) => void; onEnd: () => void }
+interface Props { followLeft?: boolean; livePitches?: number[]; liveWarningPitches?: number[]; liveAtCursor?: boolean; practiceRecognitionBand?: boolean; practiceEventResults?: Readonly<Record<string, ScoreEventFeedbackStatus>>; readOnly?: boolean; score: ScoreDocument; selected: string | null; beat: number; playing: boolean; previewPitches: number[]; previewDuration: number; insertionIndex: number; onSelect: (id: string) => void; onEnd: () => void }
 
 const { staffBottomY, noteY } = createGrandStaffGeometry(199, 6)
 const staffTopY = noteY('treble', 8)
@@ -18,7 +18,7 @@ const eventFrameBottomY = staffBottomEdgeY + 28
 const beatFraction = (value: number) => ({ .25: ['1', '4'], .5: ['1', '2'] } as Record<number, [string, string] | undefined>)[value]
 const isMeasureStart = (beat: number, beatsPerMeasure: number) => Math.abs(beat / beatsPerMeasure - Math.round(beat / beatsPerMeasure)) < .00001
 
-export default function ScoreStaff({ score, selected, beat, playing, previewPitches, previewDuration, insertionIndex, onSelect, onEnd, readOnly = false, followLeft = false, livePitches = [], liveWarningPitches = [], liveAtCursor = false, practiceActiveEventId, practiceEventResults }: Props) {
+export default function ScoreStaff({ score, selected, beat, playing, previewPitches, previewDuration, insertionIndex, onSelect, onEnd, readOnly = false, followLeft = false, livePitches = [], liveWarningPitches = [], liveAtCursor = false, practiceRecognitionBand = false, practiceEventResults }: Props) {
   const paperRef = useRef<HTMLDivElement>(null)
   const followPosition = useRef(0)
   const beatsPerMeasure = measureBeats(score.timeSignature)
@@ -45,7 +45,12 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
     return { segments, widths, xs, offset, width: Math.max(800, offset + 82), eventById: new Map(score.events.map(event => [event.id, event])), firstSegmentIndex, previewAnchorX, previewLayoutWidth, editCursorX }
   }, [score, insertionIndex, selected])
   const activeIndex = segments.findIndex(segment => beat >= segment.beat && beat < segment.beat + segment.duration)
-  const playX = activeIndex < 0 ? offset : xs[activeIndex] - 8 + (beat - segments[activeIndex].beat) / segments[activeIndex].duration * widths[activeIndex]
+  const musicalEnd = scoreLength(score)
+  const playX = activeIndex >= 0
+    ? xs[activeIndex] - 8 + (beat - segments[activeIndex].beat) / segments[activeIndex].duration * widths[activeIndex]
+    : followLeft && beat > musicalEnd
+      ? offset + (beat - musicalEnd) * 66
+      : offset
   useEffect(() => {
     const paper = paperRef.current
     if (!paper || playing || followLeft) return
@@ -104,7 +109,6 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
         const chosen = selected === segment.eventId
         const feedbackEnabled = practiceEventResults !== undefined
         const feedbackStatus = practiceEventResults?.[segment.eventId]
-        const practiceCurrent = practiceActiveEventId === segment.eventId
         const feedbackColor = feedbackStatus === 'missed'
           ? 'var(--theme-status-warning)'
           : feedbackStatus === 'hit' || feedbackStatus === 'correct'
@@ -115,8 +119,6 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
         const frameClass = [
           'score-event-frame',
           !feedbackEnabled && chosen ? 'score-event-frame--selected' : '',
-          practiceCurrent ? 'score-event-frame--practice-current' : '',
-          practiceCurrent && feedbackStatus === 'hit' ? 'score-event-frame--practice-hit' : '',
         ].filter(Boolean).join(' ')
         const event = eventById.get(segment.eventId)!
         const label = `${segment.beat + 1} 拍：${segment.pitches.map(pitch => midiNumberToPianoNote(pitch)?.name).join('、') || '休止符'}，${event.duration} 拍`
@@ -202,10 +204,11 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
         <text x={offset + 25} y={(staffTopY + staffBottomEdgeY) / 2 + 8} fill="var(--theme-accent-color)" fontSize="24">+</text>
       </g>
       }
-    </g>, [readOnly, segments, widths, xs, offset, width, eventById, firstSegmentIndex, selected, practiceActiveEventId, practiceEventResults, previewAnchorX, previewLayoutWidth, previewPitches, previewDuration, beatsPerMeasure, score.timeSignature, onSelect, onEnd])
+    </g>, [readOnly, segments, widths, xs, offset, width, eventById, firstSegmentIndex, selected, practiceEventResults, previewAnchorX, previewLayoutWidth, previewPitches, previewDuration, beatsPerMeasure, score.timeSignature, onSelect, onEnd])
   return <div ref={paperRef} className="score-paper" aria-label="乐谱五线谱，可横向滚动">
     <div style={followLeft ? { width, paddingLeft: '20%', paddingRight: '80%', boxSizing: 'content-box' } : undefined}>
     <svg width={width} height="400" viewBox={`0 0 ${width} 400`} role="group" aria-label={`${score.timeSignature[0]}/${score.timeSignature[1]} 乐谱`}>
+      {practiceRecognitionBand && <rect className="score-practice-recognition-band" x={playX - 33} y={eventFrameTopY} width="66" height={eventFrameBottomY - eventFrameTopY} rx="8" pointerEvents="none" />}
       {notation}
       {!followLeft && <line className="score-edit-cursor" x1={editCursorX} x2={editCursorX} y1="48" y2="365" pointerEvents="none" />}
       {scoreLength(score) > 0 && <line className={playing ? 'score-playback-cursor score-playback-cursor--active' : 'score-playback-cursor'} x1={playX} x2={playX} y1="48" y2="365" pointerEvents="none" />}

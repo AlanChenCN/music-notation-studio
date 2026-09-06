@@ -1,8 +1,9 @@
 import { createScore, measureBeats, scoreLength, type ScoreDocument, type ScoreEvent } from '../score/scoreModel'
 
 export type TimelineEventResult = 'hit' | 'correct' | 'missed'
+export const timelineRecognitionRadiusBeats = 0.5
 
-/** Release-gated pitch practice and event-window timeline practice. Playback never enters this controller. */
+/** Release-gated pitch practice and fixed-band timeline practice. Playback never enters this controller. */
 export class ScorePractice {
   private listeners = new Set<() => void>()
   private held = new Map<string, number>()
@@ -12,7 +13,7 @@ export class ScorePractice {
   private started = 0
   private elapsed = 0
   private anchorBeat = 0
-  private state = { mode: 'step' as 'step' | 'timeline', tempo: 90, beat: 0, startBeat: 0, missed: 0, livePitches: [] as number[], liveWarningPitches: [] as number[], eventResults: {} as Record<string, TimelineEventResult>, score: createScore(), from: 1, to: 1, loop: false, running: false, index: 0, runStart: 0, completed: 0, firstTry: 0, errors: 0, rounds: 0, seconds: 0, message: '载入 Editor 保存的乐谱，或从 Editor 点击「去练习」。', result: '' }
+  private state = { mode: 'step' as 'step' | 'timeline', tempo: 90, beat: 0, startBeat: 0, recognitionEventId: null as string | null, missed: 0, livePitches: [] as number[], liveWarningPitches: [] as number[], eventResults: {} as Record<string, TimelineEventResult>, score: createScore(), from: 1, to: 1, loop: false, running: false, index: 0, runStart: 0, completed: 0, firstTry: 0, errors: 0, rounds: 0, seconds: 0, message: '载入 Editor 保存的乐谱，或从 Editor 点击「去练习」。', result: '' }
   private now: () => number
   constructor(now = () => performance.now()) { this.now = now }
 
@@ -31,10 +32,13 @@ export class ScorePractice {
     }
   }
 
-  private timelineTargetAt(beat: number, targets = this.targets()) {
-    return targets.find(event => {
+  private recognitionTargetAt(beat: number, targets = this.targets(), results = this.state.eventResults) {
+    if (beat < this.state.startBeat) return undefined
+    return targets.slice(this.state.index).find(event => {
       const window = this.eventWindow(event)
-      return window.start <= beat && beat < window.end
+      return !results[event.id]
+        && window.start <= beat + timelineRecognitionRadiusBeats
+        && window.end > beat - timelineRecognitionRadiusBeats
     })
   }
 
@@ -56,22 +60,23 @@ export class ScorePractice {
     if (!this.state.running) return
     const seconds = Math.floor((this.elapsed + this.now() - this.started) / 1000)
     if (this.state.mode === 'step') { this.update({ seconds }); return }
-    const end = this.rangeEnd()
+    const end = this.rangeEnd() + timelineRecognitionRadiusBeats
     const beat = Math.min(end, this.anchorBeat + (this.now() - this.started) * this.state.tempo / 60000)
     const targets = this.targets()
     let eventResults = this.state.eventResults
     let { index } = this.state
-    while (index < targets.length && this.eventWindow(targets[index]).end <= beat) {
+    while (index < targets.length && this.eventWindow(targets[index]).end <= beat - timelineRecognitionRadiusBeats) {
       if (eventResults === this.state.eventResults) eventResults = { ...eventResults }
       eventResults[targets[index].id] = eventResults[targets[index].id] === 'hit' ? 'correct' : 'missed'
       index++
     }
     const summary = this.timelineSummary(eventResults)
-    const current = this.timelineTargetAt(beat, targets)
+    const current = this.recognitionTargetAt(beat, targets, eventResults)
     this.update({
       beat,
       seconds,
       index,
+      recognitionEventId: current?.id ?? null,
       completed: summary.completed,
       firstTry: summary.correct,
       missed: summary.missed,
@@ -100,7 +105,7 @@ export class ScorePractice {
   }
   private begin() {
     this.started = this.now(); this.anchorBeat = this.state.beat
-    this.update({ running: true, message: this.state.mode === 'timeline' ? '时间轴跟弹 · 在完整时值窗口内完成目标音高。' : '跟谱练习中 · 自由速度，休止符自动跳过' })
+    this.update({ running: true, message: this.state.mode === 'timeline' ? '时间轴跟弹 · 按顺序弹奏进入固定识别带的目标。' : '跟谱练习中 · 自由速度，休止符自动跳过' })
   }
   subscribe = (fn: () => void) => { this.listeners.add(fn); return () => { this.listeners.delete(fn) } }
   getSnapshot = () => this.state
@@ -111,7 +116,7 @@ export class ScorePractice {
   }
   load(score: ScoreDocument) {
     this.pause(); this.held.clear()
-    this.update({ score: structuredClone(score), tempo: score.tempo, livePitches: [], liveWarningPitches: [], from: 1, to: Math.max(1, Math.ceil(scoreLength(score) / measureBeats(score.timeSignature))), rounds: 0, result: '' })
+    this.update({ score: structuredClone(score), tempo: score.tempo, recognitionEventId: null, livePitches: [], liveWarningPitches: [], from: 1, to: Math.max(1, Math.ceil(scoreLength(score) / measureBeats(score.timeSignature))), rounds: 0, result: '' })
     this.reset()
   }
   configure(from: number, to: number, loop: boolean) {
@@ -124,11 +129,11 @@ export class ScorePractice {
     this.pause(); this.matched = false; this.failed = false; this.elapsed = 0; this.targetErrors = 0
     const beats = measureBeats(this.state.score.timeSignature)
     const start = index === 0 ? (this.state.from - 1) * beats : Math.max((this.state.from - 1) * beats, this.targets()[index]?.startBeat ?? 0)
-    this.update({ startBeat: start, beat: start - (this.state.mode === 'timeline' ? beats : 0), missed: 0, liveWarningPitches: [], eventResults: {}, index, runStart: index, completed: 0, firstTry: 0, errors: 0, seconds: 0, message: this.targets().length ? (this.state.mode === 'timeline' ? '点击开始跟弹，预备一小节后按时间轴弹奏。' : '点击开始练习；弹对后全部松键进入下一项。') : '当前范围没有可练习音符。' })
+    this.update({ startBeat: start, beat: start - (this.state.mode === 'timeline' ? beats : 0), recognitionEventId: null, missed: 0, liveWarningPitches: [], eventResults: {}, index, runStart: index, completed: 0, firstTry: 0, errors: 0, seconds: 0, message: this.targets().length ? (this.state.mode === 'timeline' ? '点击开始跟弹，预备一小节后按时间轴弹奏。' : '点击开始练习；弹对后全部松键进入下一项。') : '当前范围没有可练习音符。' })
   }
   start = () => {
     if (this.held.size || !this.targets().length || this.state.running) return
-    const finished = this.state.mode === 'timeline' ? this.state.beat >= this.rangeEnd() : this.state.index >= this.targets().length
+    const finished = this.state.mode === 'timeline' ? this.state.beat >= this.rangeEnd() + timelineRecognitionRadiusBeats : this.state.index >= this.targets().length
     if (finished) this.reset()
     this.begin()
   }
@@ -145,23 +150,29 @@ export class ScorePractice {
     const livePitches = this.heldPitches()
     this.update({ livePitches })
     if (this.state.mode === 'timeline') {
-      if (!this.state.running || this.state.beat < this.state.startBeat) {
-        this.update({ liveWarningPitches: [] })
+      if (!this.state.running) {
+        this.update({ recognitionEventId: null, liveWarningPitches: [] })
         return
       }
-      const event = this.timelineTargetAt(this.state.beat)
+      const targets = this.targets()
+      const event = this.recognitionTargetAt(this.state.beat, targets)
       if (!event) {
-        this.update({ liveWarningPitches: [] })
+        this.update({ recognitionEventId: null, liveWarningPitches: [] })
         return
       }
       const eventResults = { ...this.state.eventResults }
-      const alreadyHit = eventResults[event.id] === 'hit' || eventResults[event.id] === 'correct'
       const complete = event.pitches.every(targetPitch => livePitches.includes(targetPitch))
-      if (!alreadyHit && event.pitches.includes(pitch) && complete) {
+      if (event.pitches.includes(pitch) && complete) {
         eventResults[event.id] = 'hit'
-        this.update({ eventResults, liveWarningPitches: [], message: '当前目标已命中，结果将在时值窗口结束时结算。' })
+        const next = this.recognitionTargetAt(this.state.beat, targets, eventResults)
+        this.update({
+          eventResults,
+          recognitionEventId: next?.id ?? null,
+          liveWarningPitches: this.warningPitches(next, eventResults),
+          message: '当前目标已命中，可继续按顺序弹奏进入识别带的目标。',
+        })
       } else {
-        this.update({ liveWarningPitches: this.warningPitches(event, eventResults) })
+        this.update({ recognitionEventId: event.id, liveWarningPitches: this.warningPitches(event, eventResults) })
       }
       return
     }

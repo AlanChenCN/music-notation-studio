@@ -41,18 +41,19 @@ test('Trainer feedback shares results across tied segments and marks warnings pe
     playing:true,
     followLeft:true,
     readOnly:true,
-    practiceActiveEventId:'current',
+    practiceRecognitionBand:true,
     practiceEventResults:{long:'correct',current:'hit'},
     livePitches:[60,65],
     liveWarningPitches:[65],
   }))
   assert.equal((markup.match(/score-practice-result--correct/g) ?? []).length,1)
   assert.equal((markup.match(/>✓<\/text>/g) ?? []).length,1)
-  assert.match(markup,/score-event-frame--practice-current score-event-frame--practice-hit/)
+  assert.match(markup,/class="score-practice-recognition-band"/)
+  assert.match(markup,/class="score-practice-recognition-band"[^>]*width="66"/)
   assert.match(markup,/data-live-pitch="65" data-live-warning="true"/)
   assert.doesNotMatch(markup,/data-live-pitch="60" data-live-warning/)
 
   const editor=renderToStaticMarkup(createElement(ScoreStaff,{...props,score:tiedScore}))
-  assert.doesNotMatch(editor,/score-event-frame--practice/)
+  assert.doesNotMatch(editor,/score-practice-recognition-band/)
   assert.doesNotMatch(editor,/score-practice-result/)
 })

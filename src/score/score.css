@@ -31,12 +31,10 @@
 .score-note-target:hover .score-event-frame,
 .score-note-target:focus-visible .score-event-frame { stroke: var(--theme-accent-color); }
 .score-event-frame--selected { stroke: var(--theme-left-hand-color); }
-.score-event-frame--practice-current {
+.score-practice-recognition-band {
   fill: var(--theme-accent-background);
   stroke: var(--theme-accent-border);
-}
-.score-event-frame--practice-hit {
-  stroke: var(--theme-status-success);
+  stroke-width: 1.5;
 }
 .score-practice-result--correct { fill: var(--theme-status-success); }
 .score-practice-result--missed { fill: var(--theme-status-warning); }
