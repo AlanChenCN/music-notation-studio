@@ -6,6 +6,9 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
+import ScoreTrainer from './practice/ScoreTrainer'
+import { ScorePractice } from './practice/scorePractice'
+import type { ScoreDocument } from './score/scoreModel'
 import ScoreEditor from './score/ScoreEditor'
 import GrandStaff from './components/GrandStaff'
 import Header from './components/Header'
@@ -65,6 +68,9 @@ function App() {
   } = useSettings()
   const [workspace, setWorkspace] = useState<'trainer' | 'score'>('score')
   const workspaceRef = useRef<'trainer' | 'score'>('score')
+  const [trainerSource, setTrainerSource] = useState<'score' | 'random'>('score')
+  const trainerSourceRef = useRef<'score' | 'random'>('score')
+  const scorePractice = useMemo(() => new ScorePractice(), [])
   const heldAudition = useRef(new Set<string>())
   const [audition, setAudition] = useState<number[]>([])
   const [playbackNotes, setPlaybackNotes] = useState<string[]>([])
@@ -168,9 +174,11 @@ function App() {
       velocity: context.velocity,
     })
 
-    if (event && workspaceRef.current === 'trainer') {
+    if (event && workspaceRef.current === 'trainer' && trainerSourceRef.current === 'random') {
       practiceController.handleNoteEvent(event)
     }
+
+    if (workspaceRef.current === 'trainer' && trainerSourceRef.current === 'score') scorePractice.press(`${context.source}:${noteName}`, pianoNoteToMidiNumber(note)!)
 
     setPressedNotes(prev => {
       if (prev.includes(noteName)) {
@@ -181,7 +189,7 @@ function App() {
     })
 
     startNote(note.name, note.frequency)
-  }, [noteEventFactory, practiceController])
+  }, [noteEventFactory, practiceController, scorePractice])
 
   const releaseNote = useCallback((
     noteName: string,
@@ -192,6 +200,7 @@ function App() {
       setPlaybackNotes(prev => prev.filter(name => name !== noteName))
       return
     }
+    scorePractice.release(`${context.source}:${noteName}`)
     heldAudition.current.delete(`${context.source}:${noteName}`)
     const note = pianoNotes.find(item => item.name === noteName)
 
@@ -204,7 +213,7 @@ function App() {
           source: context.source,
         })
 
-        if (event && workspaceRef.current === 'trainer') {
+        if (event && workspaceRef.current === 'trainer' && trainerSourceRef.current === 'random') {
           practiceController.handleNoteRelease(event)
         }
       }
@@ -212,7 +221,7 @@ function App() {
 
     setPressedNotes(prev => prev.filter(item => item !== noteName))
     stopNote(noteName)
-  }, [noteEventFactory, practiceController])
+  }, [noteEventFactory, practiceController, scorePractice])
 
   const inputLayer = useMemo(
     // InputLayer only stores callbacks; it never invokes them during construction.
@@ -434,13 +443,20 @@ function App() {
   )
 
   const handleWorkspaceChange = useCallback((nextWorkspace: 'trainer' | 'score') => {
+    scorePractice.pause()
     workspaceRef.current = nextWorkspace
     heldAudition.current.clear()
     setWorkspace(nextWorkspace)
-  }, [])
+  }, [scorePractice])
+
+  const practiceScore = useCallback((score: ScoreDocument) => {
+    scorePractice.load(score)
+    trainerSourceRef.current = 'score'; setTrainerSource('score')
+    handleWorkspaceChange('trainer')
+  }, [scorePractice, handleWorkspaceChange])
 
   return (
-    <div className={`music-notation-studio${workspace === 'score' ? ' music-notation-studio--score' : ''}${keyDockCollapsed ? ' music-notation-studio--key-dock-collapsed' : ''}`}>
+    <div className={`music-notation-studio music-notation-studio--score${keyDockCollapsed ? ' music-notation-studio--key-dock-collapsed' : ''}`}>
       <Header
         workspace={workspace}
         disabled={pressedNotes.length > 0}
@@ -449,6 +465,9 @@ function App() {
       />
       <main className="main-content">
         <div className="trainer-panel" id="trainer-panel" role="tabpanel" aria-labelledby="trainer-tab" hidden={workspace !== 'trainer'}>
+        <div className="score-editor trainer-source" aria-label="练习来源"><button disabled={pressedNotes.length > 0} aria-pressed={trainerSource === 'score'} onClick={() => { scorePractice.pause(); trainerSourceRef.current = 'score'; setTrainerSource('score') }}>乐谱跟练</button><button disabled={pressedNotes.length > 0} aria-pressed={trainerSource === 'random'} onClick={() => { scorePractice.pause(); trainerSourceRef.current = 'random'; setTrainerSource('random') }}>随机练习 / 自由弹奏</button></div>
+        <ScoreTrainer controller={scorePractice} active={workspace === 'trainer' && trainerSource === 'score'} inputHeld={pressedNotes.length > 0} onPlayNote={playScoreNote} onStopNote={stopScoreNote} />
+        <div hidden={trainerSource !== 'random'}>
         <Toolbar
           noteDisplayMode={noteDisplayMode}
           onNoteDisplayModeChange={handleNoteDisplayModeChange}
@@ -475,14 +494,15 @@ function App() {
         />
         <PracticeTransport
           phrase={practiceSnapshot.session?.phrase ?? null}
-          enabled={practiceSnapshot.selection === 'note-practice'}
+          enabled={workspace === 'trainer' && trainerSource === 'random' && practiceSnapshot.selection === 'note-practice'}
           currentTargetIndex={practiceSnapshot.session?.cursor.noteIndex ?? -1}
           onPlayNote={playScoreNote}
           onStopNote={stopScoreNote}
           onPlaybackChange={handlePracticePlaybackChange}
         />
         </div>
-        <ScoreEditor active={workspace === 'score'} audition={audition} onPlayNote={playScoreNote} onStopNote={stopScoreNote} />
+        </div>
+        <ScoreEditor onPractice={practiceScore} inputHeld={pressedNotes.length > 0} active={workspace === 'score'} audition={audition} onPlayNote={playScoreNote} onStopNote={stopScoreNote} />
         <div className="trainer-status" hidden={workspace !== 'trainer'}><StatusBar keyboardBaseNote={keyboardBaseNote} midiDeviceName={midiDeviceName} bluetoothMidiDeviceName={bluetoothMidiDeviceName} /></div>
         <div className="score-status" hidden={workspace !== 'score'}><StatusBar keyboardBaseNote={keyboardBaseNote} midiDeviceName={midiDeviceName} bluetoothMidiDeviceName={bluetoothMidiDeviceName} /></div>
       </main>

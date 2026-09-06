@@ -16,8 +16,8 @@ function loadDraft() {
 const names = (pitches: number[]) => pitches.map(pitch => midiNumberToPianoNote(pitch)?.name).join(' · ')
 const noteFractions: Record<number, string> = { .25: '1/16', .5: '1/8', 1: '1/4', 2: '1/2', 4: '1' }
 const beatFractions: Record<number, string> = { .25: '1/4', .5: '1/2', 1: '1', 2: '2', 4: '4' }
-interface Props { active: boolean; audition: number[]; onPlayNote: (pitch: number) => void; onStopNote: (pitch: number) => void }
-export default function ScoreEditor({ active, audition, onPlayNote, onStopNote }: Props) {
+interface Props { onPractice: (score: ScoreDocument) => void; inputHeld: boolean; active: boolean; audition: number[]; onPlayNote: (pitch: number) => void; onStopNote: (pitch: number) => void }
+export default function ScoreEditor({ onPractice, inputHeld, active, audition, onPlayNote, onStopNote }: Props) {
   const [initial] = useState(loadDraft)
   const [score, setScore] = useState(initial.score)
   const [saved, setSaved] = useState(JSON.stringify(initial.score))
@@ -159,6 +159,7 @@ export default function ScoreEditor({ active, audition, onPlayNote, onStopNote }
       <div className="score-actions score-document-actions">
         <button className="score-file-action" onClick={() => { if (dirty && !window.confirm('新建乐谱？未保存内容可通过撤销恢复。')) return; change(createScore()); setSelected(null); transport.stop() }}>新建</button>
         <button className={`score-file-action${dirty ? ' score-primary' : ''}`} onClick={save}>保存</button>
+        <button className="score-file-action" disabled={inputHeld || !score.events.some(event => event.pitches.length)} onClick={() => { transport.pause(); onPractice(score) }}>去练习</button>
         <button className="score-file-action" onClick={exportScore}>导出</button>
         <button className="score-file-action" onClick={() => fileInput.current?.click()}>打开文件</button>
         <input ref={fileInput} type="file" accept=".json,application/json" hidden aria-label="导入乐谱文件" onChange={event => { const file = event.target.files?.[0]; if (file) void importScore(file); event.target.value = '' }} />

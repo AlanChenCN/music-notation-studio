@@ -4,6 +4,12 @@ A browser-based music notation and practice tool built with React and TypeScript
 
 一个基于 React 和 TypeScript 构建的浏览器音乐记谱与练习工具。
 
+## Trainer / 乐谱跟练（v0.6.0 开发中）
+
+在 Editor 点击「去练习」可练习当前乐谱；Trainer 也能载入本地已保存乐谱。支持自由速度音高跟练、小节范围、循环、示范播放和本轮成绩，保留原有随机练习与自由弹奏。练习副本不会修改 Editor 原谱。
+
+See [TRAINER.md](TRAINER.md) for score practice, range selection, scoring, and limits.
+
 ## Score Editor / 乐谱编辑
 
 The application opens on the dedicated **Score Editor** tab by default. It shares the bottom Keyboard / MIDI input dock with Trainer; the dock can collapse to keep its controls visible while hiding the piano keys.
@@ -99,6 +105,8 @@ Input & Piano Dock 中的 Keyboard Mapping 可以选择基准音，并通过方�
 - Web Audio API
 
 ## Current Status / 当前状态
+
+当前开发版本为 `v0.6.0`，新增上述 Trainer 乐谱跟练；以下为既有 v0.5.0 功能基础。
 
 Version `v0.5.0` adds the first Score Editor release to the completed Trainer scope: manual score entry, editable time signatures, score playback and seeking, local score persistence, JSON import/export, and a shared grand-staff layout. The existing 88-key piano, Keyboard / Mouse / USB MIDI / Bluetooth LE MIDI input, Unified Input Layer, practice tools, themes, and Input & Piano Dock remain included.
 

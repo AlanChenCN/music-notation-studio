@@ -5,7 +5,7 @@ import { createGrandStaffGeometry, staffLineSteps } from '../data/staffGeometry'
 import { notationSegments } from './notation'
 import { measureBeats, scoreLength, type ScoreDocument } from './scoreModel'
 
-interface Props { score: ScoreDocument; selected: string | null; beat: number; playing: boolean; previewPitches: number[]; previewDuration: number; insertionIndex: number; onSelect: (id: string) => void; onEnd: () => void }
+interface Props { readOnly?: boolean; score: ScoreDocument; selected: string | null; beat: number; playing: boolean; previewPitches: number[]; previewDuration: number; insertionIndex: number; onSelect: (id: string) => void; onEnd: () => void }
 
 const { staffBottomY, noteY } = createGrandStaffGeometry(199, 6)
 const staffTopY = noteY('treble', 8)
@@ -17,7 +17,7 @@ const eventFrameBottomY = staffBottomEdgeY + 28
 const beatFraction = (value: number) => ({ .25: ['1', '4'], .5: ['1', '2'] } as Record<number, [string, string] | undefined>)[value]
 const isMeasureStart = (beat: number, beatsPerMeasure: number) => Math.abs(beat / beatsPerMeasure - Math.round(beat / beatsPerMeasure)) < .00001
 
-export default function ScoreStaff({ score, selected, beat, playing, previewPitches, previewDuration, insertionIndex, onSelect, onEnd }: Props) {
+export default function ScoreStaff({ score, selected, beat, playing, previewPitches, previewDuration, insertionIndex, onSelect, onEnd, readOnly = false }: Props) {
   const paperRef = useRef<HTMLDivElement>(null)
   const beatsPerMeasure = measureBeats(score.timeSignature)
   const { segments, widths, xs, offset, width, eventById, previewAnchorX, previewLayoutWidth, editCursorX } = useMemo(() => {
@@ -155,11 +155,12 @@ export default function ScoreStaff({ score, selected, beat, playing, previewPitc
           })}
         </g>
       </g>}
-      <g role="button" tabIndex={0} aria-label="在末尾继续写入" onClick={onEnd} onKeyDown={e => { if (e.key === 'Enter') onEnd() }} className="score-note-target">
+      {!readOnly && <g role="button" tabIndex={0} aria-label="在末尾继续写入" onClick={onEnd} onKeyDown={e => { if (e.key === 'Enter') onEnd() }} className="score-note-target">
         <rect className="score-end-slot" x={offset} y={(staffTopY + staffBottomEdgeY) / 2 - 68} width="66" height="136" rx="8" fill={selected === null ? 'var(--theme-accent-background)' : 'transparent'} />
         <text x={offset + 25} y={(staffTopY + staffBottomEdgeY) / 2 + 8} fill="var(--theme-accent-color)" fontSize="24">+</text>
       </g>
-    </g>, [segments, widths, xs, offset, width, eventById, selected, previewAnchorX, previewLayoutWidth, previewPitches, previewDuration, beatsPerMeasure, score.timeSignature, onSelect, onEnd])
+      }
+    </g>, [readOnly, segments, widths, xs, offset, width, eventById, selected, previewAnchorX, previewLayoutWidth, previewPitches, previewDuration, beatsPerMeasure, score.timeSignature, onSelect, onEnd])
   return <div ref={paperRef} className="score-paper" aria-label="乐谱五线谱，可横向滚动">
     <svg width={width} height="400" viewBox={`0 0 ${width} 400`} role="group" aria-label={`${score.timeSignature[0]}/${score.timeSignature[1]} 乐谱`}>
       {notation}

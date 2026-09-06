@@ -1,0 +1,18 @@
+.trainer-source { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.trainer-source button { min-width: 110px; }
+.trainer-source [aria-pressed=true] { border-color: var(--theme-accent-color); color: var(--theme-accent-color); }
+.trainer-title { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--theme-heading-color); }
+.trainer-entry { display: flex; align-items: center; gap: 16px; white-space: nowrap; padding: 10px 14px; }
+.trainer-entry label { gap: 4px; }
+.trainer-entry input { width: 72px; box-sizing: border-box; }
+.trainer-mode { display: flex; flex-direction: column; gap: 8px; min-width: 140px; }
+.trainer-mode span { font-size: 12px; }
+.trainer-session-actions { display: flex; gap: 8px; margin-left: auto; }
+.trainer-empty { padding: 65px 24px; text-align: center; border: 1px solid var(--theme-border-color); background: var(--theme-score-background); }
+.trainer-metrics { display: flex; flex-wrap: wrap; gap: 16px 28px; padding: 14px; margin-top: 12px; background: var(--theme-surface-background); border: 1px solid var(--theme-border-color); border-radius: 8px; font-size: 13px; }
+.trainer-metrics strong { color: var(--theme-left-hand-color); font-variant-numeric: tabular-nums; }
+.trainer-result { padding: 12px 14px; border-left: 3px solid var(--theme-accent-color); background: var(--theme-accent-background); font-size: 13px; }
+.score-trainer .score-hint { line-height: 1.7; }
+
+.trainer-source button, .trainer-entry button { min-height: 34px; padding: 6px 10px; }
+.trainer-entry input { height: 34px; padding: 6px 10px; }
