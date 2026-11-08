@@ -71,6 +71,31 @@ describe('节拍跟弹', () => {
   })
 })
 describe('随机短谱', () => {
+  it('级进始终在可用音符间相邻移动，边界可以回转', () => {
+    for (const pool of ['white', 'all'] as const) {
+      const notes = generateNotes({ ...defaultConfig, strategy: 'stepwise', low: 60, high: 64, pool, length: 32 }, () => .99)
+      const available = pool === 'white' ? [60, 62, 64] : [60, 61, 62, 63, 64]
+      expect(notes).toHaveLength(32)
+      notes.slice(1).forEach((note, i) => expect(Math.abs(available.indexOf(note) - available.indexOf(notes[i]))).toBe(1))
+    }
+  })
+  it('跳进保持三度或五度，且不会落到范围外或重复同音', () => {
+    for (const pool of ['white', 'all'] as const) {
+      let seed = 3
+      const notes = generateNotes({ ...defaultConfig, strategy: 'leaps', pool, length: 32 }, () => ((seed = (seed * 16807) % 2147483647) / 2147483647))
+      const white = [60, 62, 64, 65, 67, 69, 71, 72]
+      notes.forEach(note => expect(note >= 60 && note <= 72).toBe(true))
+      notes.slice(1).forEach((note, i) => {
+        const distance = pool === 'white' ? Math.abs(white.indexOf(note) - white.indexOf(notes[i])) : Math.abs(note - notes[i])
+        expect(pool === 'white' ? [2, 4] : [3, 4, 7]).toContain(distance)
+      })
+    }
+  })
+  it('过窄音域明确报错，随机仍允许单音', () => {
+    expect(() => generateNotes({ ...defaultConfig, strategy: 'stepwise', low: 60, high: 60 })).toThrow('至少需要两个')
+    expect(() => generateNotes({ ...defaultConfig, strategy: 'leaps', low: 60, high: 62 })).toThrow('无法进行跳进')
+    expect(generateNotes({ ...defaultConfig, low: 60, high: 60 })).toEqual(Array(16).fill(60))
+  })
   it('遵循音域、白键范围及长度', () => {
     const notes = generateNotes({ ...defaultConfig, low: 61, high: 65, length: 32 }, () => .99)
     expect(notes).toHaveLength(32)

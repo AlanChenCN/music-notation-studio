@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Bluetooth, ChevronRight, CircleChe
 import Modal from './components/Modal'
 import Staff from './components/Staff'
 import { MidiConnection, type MidiNote, type MidiState } from './midi'
-import { createSession, defaultConfig, generateNotes, noteName, sessionBeat, sessionReducer, type Mode, type PracticeConfig } from './practice'
+import { createSession, defaultConfig, generateNotes, noteName, practicePresets, strategyHelp, sessionBeat, sessionReducer, type Mode, type PracticeConfig } from './practice'
 
 type Panel = 'midi' | 'settings' | 'practice' | null
 type Theme = 'system' | 'light' | 'dark'
@@ -12,7 +12,11 @@ const themeKey = 'mns.theme.v1'
 function loadConfig(): PracticeConfig {
   try {
     const value = JSON.parse(localStorage.getItem(configKey) || 'null')
-    if (value && ['treble', 'bass'].includes(value.clef) && Number.isInteger(value.low) && Number.isInteger(value.high) && value.low >= 36 && value.high <= 84 && value.low <= value.high && value.high - value.low <= 24 && ['white', 'all'].includes(value.pool) && [8, 16, 32].includes(value.length) && Number.isInteger(value.bpm) && value.bpm >= 40 && value.bpm <= 180 && typeof value.labels === 'boolean') return value
+    if (value && ['treble', 'bass'].includes(value.clef) && Number.isInteger(value.low) && Number.isInteger(value.high) && value.low >= 36 && value.high <= 84 && value.low <= value.high && value.high - value.low <= 24 && ['white', 'all'].includes(value.pool) && [8, 16, 32].includes(value.length) && Number.isInteger(value.bpm) && value.bpm >= 40 && value.bpm <= 180 && typeof value.labels === 'boolean') {
+      const config: PracticeConfig = { ...value, strategy: ['random', 'stepwise', 'leaps'].includes(value.strategy) ? value.strategy : 'random' }
+      generateNotes(config)
+      return config
+    }
   } catch { /* Use defaults when browser storage is unavailable or invalid. */ }
   return defaultConfig
 }
@@ -149,6 +153,9 @@ export default function App() {
         {storageError && <p className="error" role="alert">{storageError}</p>}
       </> : <>
         <p className="help">应用配置会生成新短谱并清空本轮成绩；关闭或取消保留原练习。</p>
+        <label className="setting-row"><span>快捷音域</span><select value={practicePresets.find(preset => preset.clef === draft.clef && preset.low === draft.low && preset.high === draft.high && preset.pool === draft.pool)?.id ?? 'custom'} onChange={event => { const preset = practicePresets.find(item => item.id === event.target.value); if (preset) { setDraft({ ...draft, clef: preset.clef, low: preset.low, high: preset.high, pool: preset.pool }); setFormError('') } }}><option value="custom" disabled>自定义音域</option>{practicePresets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label>
+        <label className="setting-row"><span>出题策略</span><select value={draft.strategy} onChange={event => { setDraft({ ...draft, strategy: event.target.value as PracticeConfig['strategy'] }); setFormError('') }}><option value="random">随机识谱</option><option value="stepwise">级进练习</option><option value="leaps">跳进练习</option></select></label>
+        <p className="help">{strategyHelp[draft.strategy]}快捷音域只调整谱表和音符范围，保留出题策略、速度与练习长度。</p>
         <label className="setting-row"><span>谱表</span><select value={draft.clef} onChange={event => { const clef = event.target.value as PracticeConfig['clef']; setDraft({ ...draft, clef, low: clef === 'bass' ? 48 : 60, high: clef === 'bass' ? 60 : 72 }) }}><option value="treble">高音谱表</option><option value="bass">低音谱表</option></select></label>
         <label className="setting-row"><span>最低音</span><select value={draft.low} onChange={event => setDraft({ ...draft, low: Number(event.target.value) })}>{Array.from({ length: 49 }, (_, i) => i + 36).map(pitch => <option key={pitch} value={pitch}>{noteName(pitch)}</option>)}</select></label>
         <label className="setting-row"><span>最高音</span><select value={draft.high} onChange={event => setDraft({ ...draft, high: Number(event.target.value) })}>{Array.from({ length: 49 }, (_, i) => i + 36).map(pitch => <option key={pitch} value={pitch}>{noteName(pitch)}</option>)}</select></label>

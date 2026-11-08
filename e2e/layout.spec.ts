@@ -1,5 +1,32 @@
 import { expect, test } from '@playwright/test'
 
+test('出题策略、快捷音域及旧配置迁移', async ({ page }) => {
+  await page.setViewportSize({ width: 667, height: 375 })
+  await page.goto('/')
+  await page.evaluate(() => localStorage.setItem('mns.practice.v1', JSON.stringify({ clef: 'treble', low: 60, high: 72, pool: 'white', length: 16, bpm: 80, labels: false })))
+  await page.reload()
+  await page.getByRole('button', { name: /自由速度/ }).click()
+  await page.getByRole('button', { name: '练习配置', exact: true }).click()
+  await expect(page.getByRole('combobox', { name: '出题策略', exact: true })).toHaveValue('random')
+  await page.getByRole('combobox', { name: '出题策略', exact: true }).selectOption('leaps')
+  await page.getByRole('combobox', { name: '快捷音域', exact: true }).selectOption('bass')
+  await expect(page.getByRole('combobox', { name: '谱表', exact: true })).toHaveValue('bass')
+  await expect(page.getByRole('combobox', { name: '最低音', exact: true })).toHaveValue('48')
+  await page.getByRole('combobox', { name: '最高音', exact: true }).selectOption('50')
+  await expect(page.getByRole('combobox', { name: '快捷音域', exact: true })).toHaveValue('custom')
+  await page.getByRole('button', { name: '应用并生成新题' }).click()
+  await expect(page.getByRole('alert')).toContainText('无法进行跳进')
+  await page.getByRole('combobox', { name: '快捷音域', exact: true }).selectOption('central')
+  await page.getByRole('button', { name: '应用并生成新题' }).click()
+  await expect(page.getByRole('dialog')).not.toBeVisible()
+  await page.reload()
+  await page.getByRole('button', { name: /自由速度/ }).click()
+  await page.getByRole('button', { name: '练习配置', exact: true }).click()
+  await expect(page.getByRole('combobox', { name: '出题策略', exact: true })).toHaveValue('leaps')
+  await expect(page.getByRole('combobox', { name: '快捷音域', exact: true })).toHaveValue('central')
+  await page.screenshot({ path: 'test-results/strategy-phone.png' })
+})
+
 for (const viewport of [{ width: 1024, height: 768 }, { width: 1180, height: 820 }, { width: 844, height: 390 }, { width: 667, height: 375 }, { width: 568, height: 320 }]) {
   test(`横屏布局与弹窗 ${viewport.width}×${viewport.height}`, async ({ page }) => {
     const errors: string[] = []

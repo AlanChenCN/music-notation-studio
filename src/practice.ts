@@ -2,6 +2,7 @@ export type Mode = 'reading' | 'rhythm'
 export type Status = 'ready' | 'running' | 'paused' | 'complete'
 export type Result = 'pending' | 'hit' | 'miss'
 export interface PracticeConfig {
+  strategy: 'random' | 'stepwise' | 'leaps'
   clef: 'treble' | 'bass'
   low: number
   high: number
@@ -11,7 +12,17 @@ export interface PracticeConfig {
   labels: boolean
 }
 export const defaultConfig: PracticeConfig = {
-  clef: 'treble', low: 60, high: 72, pool: 'white', length: 16, bpm: 80, labels: false,
+  strategy: 'random', clef: 'treble', low: 60, high: 72, pool: 'white', length: 16, bpm: 80, labels: false,
+}
+export const practicePresets = [
+  { id: 'central', name: '中央 C 附近', clef: 'treble', low: 60, high: 67, pool: 'white' },
+  { id: 'treble', name: '高音谱表 · C4–C5', clef: 'treble', low: 60, high: 72, pool: 'white' },
+  { id: 'bass', name: '低音谱表 · C3–C4', clef: 'bass', low: 48, high: 60, pool: 'white' },
+] as const
+export const strategyHelp = {
+  random: '在所选音域内随机出题，允许重复同音。',
+  stepwise: '每次向上或向下走一个相邻音；白键按相邻白键，全部音按半音推进。',
+  leaps: '白键练习三度或五度跳进；全部音练习小三度、大三度或纯五度。',
 }
 const naturals = [0, 2, 4, 5, 7, 9, 11]
 export const isNatural = (pitch: number) => naturals.includes(pitch % 12)
@@ -24,7 +35,17 @@ export function generateNotes(config: PracticeConfig, random = Math.random): num
     if (config.pool === 'all' || isNatural(pitch)) pool.push(pitch)
   }
   if (!pool.length) throw new Error('当前音域没有可用音符，请调整音域或音符范围。')
-  return Array.from({ length: config.length }, () => pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))])
+  const choose = (values: number[]) => values[Math.max(0, Math.min(values.length - 1, Math.floor(random() * values.length)))]
+  if (config.strategy === 'random') return Array.from({ length: config.length }, () => choose(pool))
+  const neighbors = (pitch: number) => pool.filter(candidate => {
+    const distance = config.pool === 'white' ? Math.abs(pool.indexOf(candidate) - pool.indexOf(pitch)) : Math.abs(candidate - pitch)
+    return config.strategy === 'stepwise' ? distance === 1 : (config.pool === 'white' ? [2, 4] : [3, 4, 7]).includes(distance)
+  })
+  const starts = pool.filter(pitch => neighbors(pitch).length > 0)
+  if (!starts.length) throw new Error(config.strategy === 'stepwise' ? '级进至少需要两个可用音符，请扩大音域或改用随机出题。' : '当前音域无法进行跳进，请扩大音域或改用随机出题。')
+  const notes = [choose(starts)]
+  while (notes.length < config.length) notes.push(choose(neighbors(notes[notes.length - 1])))
+  return notes
 }
 export interface Session {
   mode: Mode
