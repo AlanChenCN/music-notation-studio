@@ -12,7 +12,7 @@
     "verbatimModuleSyntax": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "types": ["vite/client", "web-bluetooth"]
+    "types": ["vite/client", "web-bluetooth", "node"]
   },
   "include": ["src", "vite.config.ts", "tests"]
 }

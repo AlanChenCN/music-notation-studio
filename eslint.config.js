@@ -7,6 +7,7 @@ export default tseslint.config(
   { ignores: ['dist', 'node_modules'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  { files: ['scripts/**/*.mjs'], languageOptions: { globals: globals.node } },
   {
     files: ['src/**/*.{ts,tsx}', 'tests/**/*.ts', 'vite.config.ts'],
     languageOptions: { globals: { ...globals.browser, ...globals.es2022 } },
