@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "Music Notation Studio",
+  "short_name": "钢琴练习",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#f8f7ff",
+  "theme_color": "#7652df",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
