@@ -8,6 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.cert/
+public/lan-cert.cer
 dist
 dist-ssr
 *.local

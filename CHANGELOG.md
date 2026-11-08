@@ -338,3 +338,9 @@ Technical Debt：
 - 鼠标输入。
 - Web Audio 实时声音反馈。
 - 多音同时播放。
+
+### 2026-10-28 LAN HTTPS
+- Fixed development and preview port to 8120 with strict port binding; load local HTTPS certificate when present.
+- Excluded local private keys and generated certificate from Git.
+- Validation: build, lint and 39 tests passed; HTTPS LAN address returned HTTP 200 with certificate verification bypassed. iOS trust and Bluetooth remain device acceptance checks.
+

@@ -143,3 +143,8 @@ npm test
 Automated tests use Node.js 24's built-in test runner and the existing TypeScript compiler, with no additional dependencies.
 
 自动化测试使用 Node.js 24 的内置测试运行器及已有 TypeScript 编译器，无新增依赖。
+
+## LAN HTTPS (8120)
+
+Run npm run build then npm run preview. With .cert/lan-key.pem and .cert/lan-cert.pem present, Vite serves HTTPS on port 8120 (strict). Local certificates and keys are ignored by Git. Download /lan-cert.cer to install the local certificate on test devices; enable full trust on iOS. The generated certificate covers 192.168.31.186 and localhost. Regenerate it if the host IP changes. HTTPS alone does not add Safari Bluetooth extension compatibility.
+
