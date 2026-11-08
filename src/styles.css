@@ -120,16 +120,24 @@ strong { font-weight: 650; }
 .final-barline { stroke-width: 3; }
 .staff { flex: 1; min-height: 0; overflow: hidden; }
 .staff svg { display: block; }
-.staff-line { stroke: var(--ink); stroke-opacity: .32; stroke-width: 1; }
+.staff-line { stroke: var(--ink); stroke-opacity: .23; stroke-width: 1; }
 .clef { font-family: 'Noto Music', 'Apple Symbols', 'Segoe UI Symbol', serif; fill: var(--ink); }
 .score-note { color: var(--ink); fill: currentColor; }
 .reading-note-track { transition: transform 280ms cubic-bezier(.22, .68, .3, 1); }
 .reading-anchor { fill: var(--action); }
 .score-note.active { color: var(--action); }
 .score-note.hit { color: var(--mint); opacity: .75; }
+.score-note.confirmed { color: var(--mint); }
 .score-note.miss { color: var(--error); opacity: .7; }
-.ledger, .stem { stroke: currentColor; stroke-width: 1.6; }
-.note-label, .result-mark { font-size: 12px; }
+.ledger { stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+.stem { stroke: currentColor; stroke-width: 2.8; stroke-linecap: round; }
+.note-head { fill: currentColor; }
+.note-halo { fill: var(--soft); stroke: var(--action); stroke-width: 1.5; stroke-opacity: .35; }
+.note-symbol { transform-origin: 0 0; }
+.score-note.confirmed .note-symbol { animation: note-hit 230ms cubic-bezier(.2, .7, .3, 1); }
+@keyframes note-hit { 0% { transform: scale(1); } 45% { transform: scale(1.16, 1.09); } 100% { transform: scale(1); } }
+.note-label { font-size: 18px; font-weight: 750; font-family: ui-rounded, 'Arial Rounded MT Bold', system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: .2px; }
+.result-mark { font-size: 12px; }
 .played-note { fill: transparent; stroke: var(--action); stroke-width: 2.5; }
 .timing-band { fill: var(--soft); opacity: .6; }
 .play-axis { stroke: var(--action); stroke-width: 1.4; }

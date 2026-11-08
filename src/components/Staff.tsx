@@ -59,19 +59,25 @@ export default function Staff({ session }: { session: Session }) {
           if (step < baseStep) for (let s = baseStep - 2; s >= step; s -= 2) ledger.push(s)
           if (step > baseStep + 8) for (let s = baseStep + 10; s <= step; s += 2) ledger.push(s)
           const up = step < baseStep + 4
-          const r = Math.max(5, gap * .55)
-          return <g key={index} className={`score-note ${active ? 'active' : ''} ${result}`}>
+          const r = Math.max(6.5, gap * .64)
+          const confirmed = result === 'hit' || (reading && active && session.matched)
+          return <g key={index} className={`score-note ${active ? 'active' : ''} ${result} ${confirmed ? 'confirmed' : ''}`}>
+            {active && !confirmed && <ellipse cx={cx} cy={cy} rx={r + 9} ry={r * .8 + 7} className="note-halo" />}
             {ledger.map(s => <line key={s} x1={cx - r - 5} x2={cx + r + 5} y1={y(s)} y2={y(s)} className="ledger" />)}
             {[1, 3, 6, 8, 10].includes(pitch % 12) && <text x={cx - r - 13} y={cy + 5} fontSize={gap * 1.45}>♯</text>}
-            <ellipse cx={cx} cy={cy} rx={r} ry={r * .7} transform={`rotate(-18 ${cx} ${cy})`} />
-            <line x1={cx + (up ? r - 1 : -r + 1)} x2={cx + (up ? r - 1 : -r + 1)} y1={cy} y2={cy + (up ? -1 : 1) * gap * 3} className="stem" />
+            <g transform={`translate(${cx} ${cy})`}>
+              <g className="note-symbol">
+                <line x1={up ? r * .87 : -r * .87} x2={up ? r * .87 : -r * .87} y1="0" y2={(up ? -1 : 1) * Math.max(24, gap * 3)} className="stem" />
+                <ellipse rx={r} ry={r * .8} transform="rotate(-12)" className="note-head" />
+              </g>
+            </g>
             {session.config.labels && <text x={cx} y={height - 24} textAnchor="middle" className="note-label">{noteName(pitch)}</text>}
             {result !== 'pending' && <text x={cx} y="18" textAnchor="middle" className="result-mark">{result === 'hit' ? '✓' : '×'}</text>}
           </g>
         })}
         </g>
         {reading && session.status !== 'complete' && <circle cx={anchor} cy={height - 12} r="3" className="reading-anchor" />}
-        {held.filter(pitch => pitch >= session.config.low - 12 && pitch <= session.config.high + 12).map(pitch => <ellipse key={pitch} cx={anchor} cy={y(pitchStep(pitch))} rx={gap * .7} ry={gap * .52} className="played-note" />)}
+        {held.filter(pitch => pitch >= session.config.low - 12 && pitch <= session.config.high + 12).map(pitch => <ellipse key={pitch} cx={anchor} cy={y(pitchStep(pitch))} rx={Math.max(8, gap * .8)} ry={Math.max(6, gap * .62)} className="played-note" />)}
       </g>
     </svg>
   </div>
