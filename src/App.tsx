@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, ArrowUpRight, Bluetooth, ChevronRight, CircleCheck, Heart, Home, KeyboardMusic, Music2, Pause, Piano, Play, RotateCcw, Settings2, SlidersHorizontal, Smartphone, Sparkles, Star, Trophy, Unplug, X, Zap } from 'lucide-react'
 import Modal from './components/Modal'
+import type { ScorePracticeInput } from './components/ScorePreview'
 import Staff from './components/Staff'
 import { MidiConnection, type MidiNote, type MidiState } from './midi'
 import { createSession, defaultConfig, generateNotes, noteName, practicePresets, strategyHelp, sessionBeat, sessionReducer, type Mode, type PracticeConfig } from './practice'
+
+const ScorePreview = lazy(() => import('./components/ScorePreview'))
 
 type Panel = 'midi' | 'settings' | 'practice' | null
 type Theme = 'system' | 'light' | 'dark'
@@ -25,7 +28,7 @@ const keyboardNotes: Record<string, number> = { a: 60, s: 62, d: 64, f: 65, g: 6
 
 export default function App() {
   const [session, dispatch] = useReducer(sessionReducer, undefined, initialState)
-  const [page, setPage] = useState<'home' | 'practice'>('home')
+  const [page, setPage] = useState<'home' | 'practice' | 'preview'>('home')
   const [panel, setPanel] = useState<Panel>(null)
   const [draft, setDraft] = useState<PracticeConfig>(session.config)
   const [formError, setFormError] = useState('')
@@ -34,14 +37,28 @@ export default function App() {
   const [lastInput, setLastInput] = useState<number | null>(null)
   const [touchInput, setTouchInput] = useState(false)
   const [theme, setTheme] = useState<Theme>(() => { try { const value = localStorage.getItem(themeKey); return value === 'light' || value === 'dark' ? value : 'system' } catch { return 'system' } })
-  const pause = useCallback(() => dispatch({ type: 'pause', now: performance.now() }), [])
+  const scoreInput = useRef<ScorePracticeInput | null>(null)
+  const pause = useCallback(() => { dispatch({ type: 'pause', now: performance.now() }); scoreInput.current?.pause() }, [])
+  const routeInput = useCallback((note: MidiNote) => {
+    const now = performance.now()
+    dispatch({ type: 'input', ...note, now })
+    scoreInput.current?.input(note, now)
+  }, [])
+  const releaseSource = useCallback((source: 'midi' | 'keyboard' | 'touch') => {
+    dispatch({ type: 'release-source', source, now: performance.now() })
+    scoreInput.current?.release(source)
+  }, [])
   const receiveMidi = useCallback((note: MidiNote) => {
     if (note.down) setLastInput(note.pitch)
-    dispatch({ type: 'input', ...note, now: performance.now() })
-  }, [])
-  const releaseMidi = useCallback(() => { dispatch({ type: 'release-source', source: 'midi', now: performance.now() }); pause() }, [pause])
-  const connection = useMemo(() => new MidiConnection(receiveMidi, setMidi, releaseMidi), [receiveMidi, releaseMidi])
-  useEffect(() => () => connection.disconnect(), [connection])
+    routeInput(note)
+  }, [routeInput])
+  const releaseMidi = useCallback(() => { pause(); releaseSource('midi') }, [pause, releaseSource])
+  const connection = useRef<MidiConnection | null>(null)
+  useEffect(() => {
+    const midiConnection = new MidiConnection(receiveMidi, setMidi, releaseMidi)
+    connection.current = midiConnection
+    return () => { connection.current = null; midiConnection.disconnect() }
+  }, [receiveMidi, releaseMidi])
   useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
   useEffect(() => {
     if (session.status !== 'running' || session.mode !== 'rhythm') return
@@ -51,8 +68,8 @@ export default function App() {
     return () => cancelAnimationFrame(frame)
   }, [session.status, session.mode])
   useEffect(() => {
-    const releaseKeyboard = () => dispatch({ type: 'release-source', source: 'keyboard', now: performance.now() })
-    const suspend = () => { pause(); releaseKeyboard(); dispatch({ type: 'release-source', source: 'touch', now: performance.now() }) }
+    const releaseKeyboard = () => releaseSource('keyboard')
+    const suspend = () => { pause(); releaseKeyboard(); releaseSource('touch') }
     const visibility = () => { if (document.hidden) suspend() }
     const orientation = matchMedia('(orientation: portrait)')
     const rotate = () => { if (orientation.matches) { suspend(); setPanel(null) } }
@@ -60,21 +77,21 @@ export default function App() {
     document.addEventListener('visibilitychange', visibility)
     orientation.addEventListener('change', rotate)
     return () => { window.removeEventListener('blur', suspend); document.removeEventListener('visibilitychange', visibility); orientation.removeEventListener('change', rotate) }
-  }, [pause])
+  }, [pause, releaseSource])
   useEffect(() => {
     const input = (event: KeyboardEvent) => {
       const pitch = keyboardNotes[event.key.toLowerCase()]
       if (pitch === undefined || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
       const down = event.type === 'keydown'
-      if (down && (page !== 'practice' || panel || (event.target as HTMLElement).closest('input,select,textarea'))) return
+      if (down && ((page !== 'practice' && !scoreInput.current) || panel || (event.target as HTMLElement).closest('input,select,textarea'))) return
       event.preventDefault()
       if (down) setLastInput(pitch)
-      dispatch({ type: 'input', key: `keyboard:${event.code}`, pitch, down, now: performance.now() })
+      routeInput({ key: `keyboard:${event.code}`, pitch, down })
     }
     window.addEventListener('keydown', input)
     window.addEventListener('keyup', input)
     return () => { window.removeEventListener('keydown', input); window.removeEventListener('keyup', input) }
-  }, [page, panel])
+  }, [page, panel, routeInput])
   const openPanel = (next: Panel) => { pause(); setDraft({ ...session.config }); setFormError(''); setPanel(next) }
   const enter = (mode: Mode) => {
     if (session.mode !== mode) dispatch({ type: 'reset', session: createSession(mode, session.config, generateNotes(session.config)) })
@@ -121,8 +138,8 @@ export default function App() {
           <button className="mode-card reading-card" onClick={() => enter('reading')}><span className="mode-top"><span className="mode-emblem"><Music2 /></span><span className="mode-tag">自由速度</span></span><div className="mode-copy"><h2>识谱练习</h2><p>不赶时间，弹对一个，再来一个。</p></div><span className="mode-bottom"><span>{session.mode === 'reading' && session.status === 'paused' ? '继续练习' : '开启识谱冒险'}<ArrowRight /></span><span className="card-decoration" aria-hidden="true"><Star /><Star /><Star /></span></span></button>
           <button className="mode-card rhythm-card" onClick={() => enter('rhythm')}><span className="mode-top"><span className="mode-emblem"><Zap /></span><span className="mode-tag">跟随节拍</span></span><div className="mode-copy"><h2>节拍跟弹</h2><p>找到节奏，让音符跟你一起跳动。</p></div><span className="mode-bottom"><span>{session.mode === 'rhythm' && session.status === 'paused' ? '继续练习' : '出发，节拍挑战'}<ArrowRight /></span><span className="card-decoration rhythm-decoration" aria-hidden="true"><i /><i /><i /><i /><i /></span></span></button>
         </div>
-        <footer className="home-footer"><button className="text-button" onClick={() => openPanel('midi')}><span className={`status-dot ${midi.connected ? 'connected' : ''}`} />{midi.connected ? midi.name : '连接电钢琴，准备出发'}<ChevronRight /></button><span><Heart /> 每一个音符，都算数</span></footer>
-      </main> : <main className="practice-page">
+        <footer className="home-footer"><button className="text-button" onClick={() => openPanel('midi')}><span className={`status-dot ${midi.connected ? 'connected' : ''}`} />{midi.connected ? midi.name : '连接电钢琴，准备出发'}<ChevronRight /></button><button className="text-button preview-entry" onClick={() => { pause(); setPage('preview') }}><Music2 />谱例预览<ChevronRight /></button></footer>
+      </main> : page === 'preview' ? <Suspense fallback={<main className="practice-page"><p className="help">正在加载谱面…</p></main>}><ScorePreview onBack={goHome} inputRef={scoreInput} held={session.held} onInput={routeInput} /></Suspense> : <main className="practice-page">
         <div className="practice-heading"><div><button className="icon-button" onClick={goHome} aria-label="返回主页"><ArrowLeft /></button><span className={`practice-mode-icon ${session.mode}`} aria-hidden="true">{session.mode === 'reading' ? <Music2 /> : <Zap />}</span><h1>{name}</h1></div><button className="button quiet" onClick={() => openPanel('practice')}><SlidersHorizontal /><span>练习配置</span></button></div>
         <section className="score-surface" aria-label="练习谱面">
           <div className="score-meta"><span>{session.config.clef === 'treble' ? '高' : '低'}音谱表 · {noteName(session.config.low)}–{noteName(session.config.high)} · 4/4</span><div className="score-display-controls"><span className="pace-label">{session.mode === 'reading' ? '自由速度' : `${session.config.bpm} BPM`}</span><label className="note-name-toggle"><input type="checkbox" checked={session.config.labels} onChange={toggleLabels} /><span>音名</span></label></div></div>
@@ -139,11 +156,11 @@ export default function App() {
       {panel === 'midi' ? <>
         <div className="connection-summary"><span className={`status-dot ${midi.connected ? 'connected' : ''}`} /><div><strong>{midi.connected ? midi.name : '尚未连接电钢琴'}</strong><p>{midi.connected ? '试弹一个音，确认输入正常。' : '打开电钢琴蓝牙 MIDI，并允许 Beacio 访问此网站。'}</p></div></div>
         {!window.isSecureContext && <p className="error" role="alert">当前不是安全连接。设备 MIDI 访问需要 HTTPS 或 localhost。</p>}
-        <button className="connection-option" disabled={midi.busy} onClick={() => void connection.connectBluetooth()}><Bluetooth /><div><strong>{midi.busy && midi.path === 'bluetooth' ? '正在连接…' : '连接蓝牙 MIDI'}</strong><small>Safari + Beacio 蓝牙接口</small></div><ChevronRight /></button>
-        <button className="connection-option" disabled={midi.busy} onClick={() => void connection.connectWebMidi()}><Piano /><div><strong>{midi.busy && midi.path === 'webmidi' ? '正在连接…' : '使用系统 MIDI'}</strong><small>设备由系统或插件提供 MIDI 接口时使用</small></div><ChevronRight /></button>
+        <button className="connection-option" disabled={midi.busy} onClick={() => void connection.current?.connectBluetooth()}><Bluetooth /><div><strong>{midi.busy && midi.path === 'bluetooth' ? '正在连接…' : '连接蓝牙 MIDI'}</strong><small>Safari + Beacio 蓝牙接口</small></div><ChevronRight /></button>
+        <button className="connection-option" disabled={midi.busy} onClick={() => void connection.current?.connectWebMidi()}><Piano /><div><strong>{midi.busy && midi.path === 'webmidi' ? '正在连接…' : '使用系统 MIDI'}</strong><small>设备由系统或插件提供 MIDI 接口时使用</small></div><ChevronRight /></button>
         {midi.error && <p className="error" role="alert">{midi.error}</p>}
         <div className="input-monitor"><span>最近收到的音符</span><strong aria-live="polite">{lastInput === null ? '等待输入' : noteName(lastInput)}</strong></div>
-        {(midi.connected || midi.busy) && <button className="button" onClick={() => connection.disconnect()}><Unplug />{midi.busy ? '取消连接' : '断开连接'}</button>}
+        {(midi.connected || midi.busy) && <button className="button" onClick={() => connection.current?.disconnect()}><Unplug />{midi.busy ? '取消连接' : '断开连接'}</button>}
         <p className="help">切换页面不会主动断开连接。连接中断时练习暂停。蓝牙适配需在你的 Beacio 与电钢琴上实测。</p>
       </> : panel === 'settings' ? <>
         <label className="setting-row"><span>外观</span><select value={theme} onChange={event => setAppearance(event.target.value as Theme)}><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>

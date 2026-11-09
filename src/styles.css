@@ -130,8 +130,8 @@ strong { font-weight: 650; }
 .score-note.confirmed { color: var(--mint); }
 .score-note.miss { color: var(--error); opacity: .7; }
 .ledger { stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
-.stem { stroke: currentColor; stroke-width: 2.8; stroke-linecap: round; }
-.note-head { fill: currentColor; }
+.stem { stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
+.note-head { fill: currentColor; stroke: currentColor; stroke-width: 3; }
 .note-halo { fill: var(--soft); stroke: var(--action); stroke-width: 1.5; stroke-opacity: .35; }
 .note-symbol { transform-origin: 0 0; }
 .score-note.confirmed .note-symbol { animation: note-hit 230ms cubic-bezier(.2, .7, .3, 1); }
@@ -258,3 +258,71 @@ input[type='checkbox'] { width: 24px; height: 24px; accent-color: var(--action);
   .modal[open] { visibility: hidden; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+
+.preview-page { gap: 10px; }
+.preview-selector { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-shrink: 0; font-size: 12px; color: var(--quiet); }
+.preview-selector label { display: flex; align-items: center; gap: 12px; color: var(--ink); }
+.preview-selector select { width: 270px; max-width: none; }
+.preview-selector > span { white-space: nowrap; }
+.preview-surface { padding: 8px 10px; }
+.preview-viewport { flex: 1; min-height: 0; overflow-x: auto; overflow-y: hidden; touch-action: pan-x; scrollbar-width: thin; color: var(--ink); }
+.preview-strip { position: relative; }
+.preview-paper svg { display: block; }
+.preview-note-label { fill: var(--action); font: 750 16px ui-rounded, system-ui, sans-serif; }
+.preview-cursor { position: absolute; top: 0; width: 2px; background: var(--action); opacity: .65; pointer-events: none; }
+.preview-transport { display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding: 8px 4px 0; border-top: 1px solid var(--edge); font-size: 12px; }
+.preview-transport > span { white-space: nowrap; }
+.preview-transport input { flex: 1; min-width: 40px; accent-color: var(--action); }
+.preview-help { margin: 0; color: var(--quiet); font-size: 12px; flex-shrink: 0; }
+@media (max-height: 540px) and (orientation: landscape) {
+  .preview-page { gap: 4px; }
+  .preview-selector select { min-height: 36px; height: 36px; font-size: 14px; padding: 4px 8px; }
+  .preview-surface { padding: 4px 8px; }
+  .preview-transport { padding-top: 3px; gap: 6px; }
+  .preview-transport button { min-height: 36px; height: 36px; padding: 6px 10px; }
+  .preview-help { font-size: 10px; }
+}
+@media (max-width: 700px) and (orientation: landscape) {
+  .preview-selector { gap: 8px; font-size: 10px; }
+  .preview-selector label { gap: 6px; }
+  .preview-selector select { width: 210px; }
+}
+
+.preview-heading-controls { display: flex; align-items: center; gap: 14px; }
+.preview-heading-controls select { width: 150px; max-width: none; font-size: 13px; }
+@media (max-height: 540px) and (orientation: landscape) {
+  .preview-heading-controls select { min-height: 32px; height: 32px; padding: 4px 8px; }
+}
+
+/* Same rounded learning style as the practice staff, with duration semantics intact. */
+.preview-paper .vf-stave { stroke: var(--ink); stroke-opacity: .25; }
+.preview-paper .vf-stavenote { color: var(--ink); }
+.preview-paper .vf-stavenote.preview-current { color: var(--action); }
+.preview-paper .vf-stavenote.preview-passed { color: var(--mint); }
+.preview-paper .vf-stem path { stroke-width: 2.7; stroke-linecap: round; }
+.preview-paper .preview-note-head { stroke: currentColor; stroke-width: 3; stroke-linejoin: round; }
+.preview-note-head.solid { fill: currentColor; }
+.preview-note-head.hollow { fill: var(--panel); }
+.preview-paper .preview-current .preview-note-head { filter: drop-shadow(0 0 4px var(--soft)); }
+.preview-note-label { font-size: 18px; font-weight: 750; }
+.preview-cursor { width: 3px; border-radius: 3px; opacity: .4; }
+.preview-paper .vf-stem { stroke: currentColor; }
+.preview-paper .vf-beam { fill: currentColor; stroke: currentColor; }
+
+.score-mode-buttons { display: flex; gap: 6px; flex-shrink: 0; }
+.score-mode-buttons .button { min-height: 34px; padding: 4px 9px; white-space: nowrap; }
+.score-practice-result { display: grid; gap: 2px; flex: 1; }
+.score-practice-result small { color: var(--quiet); }
+.preview-paper .vf-stavenote.preview-missed { color: var(--error); }
+.score-touch { margin-top: 4px; }
+.score-touch .touch-key { flex: 1 0 38px; }
+@media (max-width: 750px) {
+  .preview-selector > span:has(+ .score-mode-buttons) { display: none; }
+  .preview-selector label { min-width: 0; white-space: nowrap; }
+  .preview-selector select { min-width: 0; max-width: 100%; }
+}
+
+.preview-following { position: relative; overflow: clip; touch-action: none; }
+.preview-fixed-axis { position: absolute; top: 0; transform: translateX(-50%); pointer-events: none; }
+.preview-fixed-axis .timing-band { opacity: .25; }
+.preview-input-marks { position: absolute; top: 0; transform: translateX(-50%); pointer-events: none; z-index: 1; overflow: visible; }

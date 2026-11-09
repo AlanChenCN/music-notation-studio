@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { noteName, sessionBeat, type Session } from '../practice'
+import { measureLeadingInset, noteAnchorOffset, practiceAnchor, practiceQuarterWidth } from '../music/spacing'
+import { headTangent, notation } from '../music/notation'
 
 const steps = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6]
 const pitchStep = (pitch: number) => Math.floor(pitch / 12) * 7 + steps[pitch % 12]
@@ -26,8 +28,10 @@ export default function Staff({ session }: { session: Session }) {
   const bottom = y(baseStep)
   const top = y(baseStep + 8)
   const beat = session.mode === 'rhythm' ? Math.max(-1, sessionBeat(session)) : session.index
-  const spacing = Math.max(62, Math.min(112, (width - 100) / 5))
-  const anchor = Math.max(110, width * 0.27)
+  const spacing = practiceQuarterWidth(width)
+  const firstPitchSharp = session.notes.some((pitch, index) => index % 4 === 0 && [1, 3, 6, 8, 10].includes(pitch % 12))
+  const leadingInset = measureLeadingInset(firstPitchSharp ? Math.max(6, gap * notation.head / 14) + 13 : 0) + noteAnchorOffset
+  const anchor = Math.max(practiceAnchor.min, width * practiceAnchor.ratio)
   const reading = session.mode === 'reading'
   const x = (index: number) => anchor + (index - (reading ? 0 : beat)) * spacing
   const held = [...new Set(Object.values(session.held))]
@@ -41,7 +45,7 @@ export default function Staff({ session }: { session: Session }) {
         <g className={reading ? 'reading-note-track' : undefined} style={reading ? { transform: `translateX(${-session.index * spacing}px)` } : undefined}>
         {Array.from({ length: Math.ceil(session.notes.length / 4) + 1 }, (_, measure) => {
           const end = measure * 4 === session.notes.length
-          const cx = x(measure * 4 - .5)
+          const cx = x(measure * 4) - leadingInset
           return <g key={`measure-${measure}`} className="measure-boundary" aria-label={end ? '终止线' : `第 ${measure + 1} 小节起点`}>
             <line x1={cx} x2={cx} y1={top} y2={bottom} className={end ? 'barline final-barline' : 'barline'} />
             {end && <line x1={cx - 5} x2={cx - 5} y1={top} y2={bottom} className="barline" />}
@@ -59,7 +63,8 @@ export default function Staff({ session }: { session: Session }) {
           if (step < baseStep) for (let s = baseStep - 2; s >= step; s -= 2) ledger.push(s)
           if (step > baseStep + 8) for (let s = baseStep + 10; s <= step; s += 2) ledger.push(s)
           const up = step < baseStep + 4
-          const r = Math.max(6.5, gap * .64)
+          const r = Math.max(6, gap * notation.head / 14)
+          const join = headTangent(r, up ? 1 : -1)
           const confirmed = result === 'hit' || (reading && active && session.matched)
           return <g key={index} className={`score-note ${active ? 'active' : ''} ${result} ${confirmed ? 'confirmed' : ''}`}>
             {active && !confirmed && <ellipse cx={cx} cy={cy} rx={r + 9} ry={r * .8 + 7} className="note-halo" />}
@@ -67,8 +72,8 @@ export default function Staff({ session }: { session: Session }) {
             {[1, 3, 6, 8, 10].includes(pitch % 12) && <text x={cx - r - 13} y={cy + 5} fontSize={gap * 1.45}>♯</text>}
             <g transform={`translate(${cx} ${cy})`}>
               <g className="note-symbol">
-                <line x1={up ? r * .87 : -r * .87} x2={up ? r * .87 : -r * .87} y1="0" y2={(up ? -1 : 1) * Math.max(24, gap * 3)} className="stem" />
-                <ellipse rx={r} ry={r * .8} transform="rotate(-12)" className="note-head" />
+                <line x1={join.x} x2={join.x} y1={join.y} y2={(up ? -1 : 1) * Math.max(24, gap * 3)} className="stem" />
+                <ellipse rx={r} ry={r * notation.ratio} transform={`rotate(${notation.tilt})`} className="note-head" />
               </g>
             </g>
             {session.config.labels && <text x={cx} y={height - 24} textAnchor="middle" className="note-label">{noteName(pitch)}</text>}

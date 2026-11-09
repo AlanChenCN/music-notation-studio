@@ -1,3 +1,6 @@
+import { singleNotesToScore, scoreToSingleNotes } from './music/adapter'
+import type { Score } from './music/score'
+
 export type Mode = 'reading' | 'rhythm'
 export type Status = 'ready' | 'running' | 'paused' | 'complete'
 export type Result = 'pending' | 'hit' | 'miss'
@@ -48,6 +51,7 @@ export function generateNotes(config: PracticeConfig, random = Math.random): num
   return notes
 }
 export interface Session {
+  score: Score
   mode: Mode
   config: PracticeConfig
   notes: number[]
@@ -64,9 +68,11 @@ export interface Session {
 }
 export const timingWindow = 0.3 // Quarter-note beats, measured around each target onset.
 export function createSession(mode: Mode, config: PracticeConfig, notes: number[]): Session {
+  const score = singleNotesToScore(notes, { clef: config.clef, bpm: config.bpm })
+  const practiceNotes = scoreToSingleNotes(score)
   return {
-    mode, config: { ...config }, notes, status: 'ready', index: 0,
-    results: notes.map(() => 'pending'), held: {}, matched: false, attemptWrong: false,
+    score, mode, config: { ...config }, notes: practiceNotes, status: 'ready', index: 0,
+    results: practiceNotes.map(() => 'pending'), held: {}, matched: false, attemptWrong: false,
     errors: 0, feedback: '准备好后，开始练习', elapsed: 0, startedAt: 0,
   }
 }
