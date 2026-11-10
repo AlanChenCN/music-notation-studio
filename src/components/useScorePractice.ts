@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import type { MidiNote } from '../midi'
 import { PracticeEngine } from '../music/practiceEngine'
-import { TICKS_PER_QUARTER, type Score } from '../music/score'
+import { measureTicks, TICKS_PER_QUARTER, type Score } from '../music/score'
 
 export type ScoreMode = 'reading' | 'rhythm'
-export type ScorePracticeInput = { input: (note: MidiNote, now: number) => void; release: (source: string) => void; pause: () => void }
+export type ScorePracticeInput = { input?: (note: MidiNote, now: number) => void; release?: (source: string) => void; pause: () => void }
 
-export function useScorePractice(score: Score, mode: ScoreMode | null, inputRef: RefObject<ScorePracticeInput | null>) {
-  const initialTick = mode === 'rhythm' ? -4 * TICKS_PER_QUARTER : 0
+export function useScorePractice(score: Score, mode: ScoreMode | null, inputRef: RefObject<ScorePracticeInput | null>, setPreviewPlaying: (playing: boolean) => void) {
+  const initialTick = mode === 'rhythm' ? -measureTicks(score.meter) : 0
   const rate = score.tempo.quarterBpm * TICKS_PER_QUARTER / 60_000
   const engine = useRef<PracticeEngine | null>(null)
   const clock = useRef({ tick: initialTick, started: 0, running: false })
@@ -21,7 +21,10 @@ export function useScorePractice(score: Score, mode: ScoreMode | null, inputRef:
       errors: e.errors, early: e.earlyReleases.length, statuses: e.results.map(result => result.status) })
   }
   useEffect(() => {
-    if (!mode) return
+    if (!mode) {
+      inputRef.current = { pause: () => setPreviewPlaying(false) }
+      return () => { inputRef.current = null }
+    }
     inputRef.current = {
       input(note, now) {
         const e = engine.current

@@ -1,5 +1,9 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, ArrowUpRight, Bluetooth, ChevronRight, CircleCheck, Heart, Home, KeyboardMusic, Music2, Pause, Piano, Play, RotateCcw, Settings2, SlidersHorizontal, Smartphone, Sparkles, Star, Trophy, Unplug, X, Zap } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, FileMusic, Library, ArrowUpRight, Bluetooth, ChevronRight, CircleCheck, Heart, Home, KeyboardMusic, Music2, Pause, Piano, Play, RotateCcw, Settings2, SlidersHorizontal, Smartphone, Sparkles, Star, Trophy, Unplug, X, Zap } from 'lucide-react'
+import { songScores, workoutScores } from './music/examples'
+import { beginnerCourse } from './music/course'
+import { loadPersonalScores, savePersonalScores, type PersonalScore } from './music/personalScores'
+import { parseScore, serializeScore, type Score } from './music/score'
 import Modal from './components/Modal'
 import type { ScorePracticeInput } from './components/ScorePreview'
 import Staff from './components/Staff'
@@ -8,7 +12,21 @@ import { createSession, defaultConfig, generateNotes, noteName, practicePresets,
 
 const ScorePreview = lazy(() => import('./components/ScorePreview'))
 
-type Panel = 'midi' | 'settings' | 'practice' | null
+const modules = [
+  { id: 'courses', title: '进阶课程', description: '按顺序练，从认音到节奏。', icon: BookOpen },
+  { id: 'workouts', title: '专项训练', description: '挑一项能力，马上开练。', icon: Zap },
+  { id: 'songs', title: '钢琴曲库', description: '选一首熟悉的旋律来弹。', icon: Library },
+  { id: 'personal', title: '我的乐谱', description: '导入、编辑并练自己的乐谱。', icon: FileMusic },
+] as const
+type Module = typeof modules[number]['id']
+function CatalogRow({ title, detail, onClick }: { title: string; detail?: string; onClick: () => void }) {
+  return <button className="catalog-row" aria-label={title} onClick={onClick}>
+    <span><strong>{title}</strong>{detail && <small>{detail}</small>}</span>
+    <ChevronRight aria-hidden="true" />
+  </button>
+}
+
+type Panel = Module | 'scoreEditor' | 'midi' | 'settings' | 'practice' | null
 type Theme = 'system' | 'light' | 'dark'
 const configKey = 'mns.practice.v1'
 const themeKey = 'mns.theme.v1'
@@ -29,11 +47,57 @@ const keyboardNotes: Record<string, number> = { a: 60, s: 62, d: 64, f: 65, g: 6
 export default function App() {
   const [session, dispatch] = useReducer(sessionReducer, undefined, initialState)
   const [page, setPage] = useState<'home' | 'practice' | 'preview'>('home')
+  const [personalScores, setPersonalScores] = useState(loadPersonalScores)
+  const [importError, setImportError] = useState('')
+  const [editor, setEditor] = useState({ id: '', json: '' })
+  const updatePersonalScores = (items: PersonalScore[]) => {
+    savePersonalScores(items)
+    setPersonalScores(items)
+    setImportError('')
+  }
+  const importPersonalScore = async (file: File) => {
+    try {
+      const score = parseScore(await file.text())
+      updatePersonalScores([...loadPersonalScores(), { id: crypto.randomUUID(), score }])
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : '无法导入乐谱。')
+    }
+  }
+  const editPersonalScore = (item?: PersonalScore) => {
+    setEditor({ id: item?.id ?? crypto.randomUUID(), json: serializeScore(item?.score ?? { ...songScores[0], title: '未命名乐谱', measures: 1, voices: songScores[0].voices.map(voice => ({ ...voice, events: voice.events.slice(0, 4) })) }) })
+    setImportError('')
+    setPanel('scoreEditor')
+  }
+  const saveEditedScore = () => {
+    try {
+      const item = { id: editor.id, score: parseScore(editor.json) }
+      const items = personalScores.some(entry => entry.id === item.id)
+        ? personalScores.map(entry => entry.id === item.id ? item : entry)
+        : [...personalScores, item]
+      updatePersonalScores(items)
+      setPanel('personal')
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : '无法保存乐谱。')
+    }
+  }
+  const [scoreEntry, setScoreEntry] = useState<{ score: Score; mode: Mode | null; title: string; instruction?: string } | null>(null)
   const [panel, setPanel] = useState<Panel>(null)
   const [draft, setDraft] = useState<PracticeConfig>(session.config)
   const [formError, setFormError] = useState('')
   const [storageError, setStorageError] = useState('')
   const [midi, setMidi] = useState<MidiState>({ connected: false, name: '', error: '', busy: false, path: null })
+  const [outputTest, setOutputTest] = useState({ running: false, message: '' })
+  const testOutput = async () => {
+    const active = connection.current
+    if (!active || outputTest.running) return
+    setOutputTest({ running: true, message: '' })
+    try {
+      await active.testBluetoothOutput()
+      setOutputTest({ running: false, message: '中央 C 指令已发送，请确认电钢琴是否发声。' })
+    } catch (error) {
+      setOutputTest({ running: false, message: error instanceof Error ? error.message : '蓝牙 MIDI 写入失败。' })
+    }
+  }
   const [lastInput, setLastInput] = useState<number | null>(null)
   const [touchInput, setTouchInput] = useState(false)
   const [theme, setTheme] = useState<Theme>(() => { try { const value = localStorage.getItem(themeKey); return value === 'light' || value === 'dark' ? value : 'system' } catch { return 'system' } })
@@ -42,11 +106,11 @@ export default function App() {
   const routeInput = useCallback((note: MidiNote) => {
     const now = performance.now()
     dispatch({ type: 'input', ...note, now })
-    scoreInput.current?.input(note, now)
+    scoreInput.current?.input?.(note, now)
   }, [])
   const releaseSource = useCallback((source: 'midi' | 'keyboard' | 'touch') => {
     dispatch({ type: 'release-source', source, now: performance.now() })
-    scoreInput.current?.release(source)
+    scoreInput.current?.release?.(source)
   }, [])
   const receiveMidi = useCallback((note: MidiNote) => {
     if (note.down) setLastInput(note.pitch)
@@ -83,7 +147,7 @@ export default function App() {
       const pitch = keyboardNotes[event.key.toLowerCase()]
       if (pitch === undefined || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return
       const down = event.type === 'keydown'
-      if (down && ((page !== 'practice' && !scoreInput.current) || panel || (event.target as HTMLElement).closest('input,select,textarea'))) return
+      if (down && ((page !== 'practice' && !scoreInput.current?.input) || panel || (event.target as HTMLElement).closest('input,select,textarea'))) return
       event.preventDefault()
       if (down) setLastInput(pitch)
       routeInput({ key: `keyboard:${event.code}`, pitch, down })
@@ -92,8 +156,10 @@ export default function App() {
     window.addEventListener('keyup', input)
     return () => { window.removeEventListener('keydown', input); window.removeEventListener('keyup', input) }
   }, [page, panel, routeInput])
-  const openPanel = (next: Panel) => { pause(); setDraft({ ...session.config }); setFormError(''); setPanel(next) }
+  const openPanel = (next: Panel) => { pause(); setDraft({ ...session.config }); setFormError(''); setOutputTest(previous => previous.running ? previous : { running: false, message: '' }); setPanel(next) }
+  const openScore = (score: Score, mode: Mode | null, title: string, instruction?: string) => { pause(); setPanel(null); setScoreEntry({ score, mode, title, instruction }); setPage('preview') }
   const enter = (mode: Mode) => {
+    setPanel(null)
     if (session.mode !== mode) dispatch({ type: 'reset', session: createSession(mode, session.config, generateNotes(session.config)) })
     setPage('practice')
   }
@@ -121,9 +187,11 @@ export default function App() {
   const running = session.status === 'running'
   const completed = session.status === 'complete'
   const heldCount = Object.keys(session.held).length
-  const name = session.mode === 'reading' ? '识谱练习' : '节拍跟弹'
+  const name = session.mode === 'reading' ? '识谱' : '跟弹'
   const beat = sessionBeat(session)
-  const progress = Math.round(session.results.filter(result => result !== 'pending').length / session.notes.length * 100)
+  const progress = completed ? 100 : Math.round(100 * (session.mode === 'rhythm'
+    ? Math.max(0, Math.min(1, beat / session.notes.length))
+    : hits / session.notes.length))
   const feedbackTone = completed ? 'complete' : /正确|很好/.test(session.feedback) ? 'success' : /再试|不匹配|未落/.test(session.feedback) ? 'retry' : 'neutral'
   const touchPitches = useMemo(() => Array.from(new Set(Array.from({ length: session.config.high - session.config.low + 1 }, (_, i) => i + session.config.low))).filter(pitch => session.config.pool === 'all' || ![1, 3, 6, 8, 10].includes(pitch % 12)), [session.config])
   return <>
@@ -134,12 +202,11 @@ export default function App() {
       </header>
       {page === 'home' ? <main className="home-page">
         <div className="home-hero"><div className="home-intro"><span className="eyebrow"><Sparkles />快乐练琴，现在开始</span><h1>从一个<span className="headline-accent">音符</span>开始。</h1><p>把今天的练习，变成一场小冒险。</p></div><div className="hero-art" aria-hidden="true"><span className="art-spark spark-one"><Sparkles /></span><span className="art-note"><Music2 /></span><div className="note-buddy"><Music2 /><span className="buddy-eyes"><i /><i /></span><span className="buddy-smile" /></div><span className="art-spark spark-two"><Star /></span><div className="mini-piano">{Array.from({ length: 7 }, (_, i) => <i key={i} />)}</div></div></div>
-        <div className="mode-grid">
-          <button className="mode-card reading-card" onClick={() => enter('reading')}><span className="mode-top"><span className="mode-emblem"><Music2 /></span><span className="mode-tag">自由速度</span></span><div className="mode-copy"><h2>识谱练习</h2><p>不赶时间，弹对一个，再来一个。</p></div><span className="mode-bottom"><span>{session.mode === 'reading' && session.status === 'paused' ? '继续练习' : '开启识谱冒险'}<ArrowRight /></span><span className="card-decoration" aria-hidden="true"><Star /><Star /><Star /></span></span></button>
-          <button className="mode-card rhythm-card" onClick={() => enter('rhythm')}><span className="mode-top"><span className="mode-emblem"><Zap /></span><span className="mode-tag">跟随节拍</span></span><div className="mode-copy"><h2>节拍跟弹</h2><p>找到节奏，让音符跟你一起跳动。</p></div><span className="mode-bottom"><span>{session.mode === 'rhythm' && session.status === 'paused' ? '继续练习' : '出发，节拍挑战'}<ArrowRight /></span><span className="card-decoration rhythm-decoration" aria-hidden="true"><i /><i /><i /><i /><i /></span></span></button>
+        <div className="mode-grid home-modules">
+          {modules.map(({ id, title, description, icon: Icon }) => <button key={id} className={`mode-card module-card module-${id}`} onClick={() => openPanel(id)}><span className="mode-emblem"><Icon /></span><div className="mode-copy"><h2>{title}</h2><p>{description}</p></div><ArrowRight className="module-arrow" /></button>)}
         </div>
-        <footer className="home-footer"><button className="text-button" onClick={() => openPanel('midi')}><span className={`status-dot ${midi.connected ? 'connected' : ''}`} />{midi.connected ? midi.name : '连接电钢琴，准备出发'}<ChevronRight /></button><button className="text-button preview-entry" onClick={() => { pause(); setPage('preview') }}><Music2 />谱例预览<ChevronRight /></button></footer>
-      </main> : page === 'preview' ? <Suspense fallback={<main className="practice-page"><p className="help">正在加载谱面…</p></main>}><ScorePreview onBack={goHome} inputRef={scoreInput} held={session.held} onInput={routeInput} /></Suspense> : <main className="practice-page">
+        <footer className="home-footer"><button className="text-button" onClick={() => openPanel('midi')}><span className={`status-dot ${midi.connected ? 'connected' : ''}`} />{midi.connected ? midi.name : '连接电钢琴，准备出发'}<ChevronRight /></button><button className="text-button preview-entry" onClick={() => { pause(); setScoreEntry(null); setPage('preview') }}><Music2 />谱例预览<ChevronRight /></button></footer>
+      </main> : page === 'preview' ? <Suspense fallback={<main className="practice-page"><p className="help">正在加载谱面…</p></main>}><ScorePreview onBack={goHome} inputRef={scoreInput} held={session.held} onInput={routeInput} labels={session.config.labels} onToggleLabels={toggleLabels} initialScore={scoreEntry?.score} initialMode={scoreEntry?.mode} title={scoreEntry?.title} instruction={scoreEntry?.instruction} /></Suspense> : <main className="practice-page">
         <div className="practice-heading"><div><button className="icon-button" onClick={goHome} aria-label="返回主页"><ArrowLeft /></button><span className={`practice-mode-icon ${session.mode}`} aria-hidden="true">{session.mode === 'reading' ? <Music2 /> : <Zap />}</span><h1>{name}</h1></div><button className="button quiet" onClick={() => openPanel('practice')}><SlidersHorizontal /><span>练习配置</span></button></div>
         <section className="score-surface" aria-label="练习谱面">
           <div className="score-meta"><span>{session.config.clef === 'treble' ? '高' : '低'}音谱表 · {noteName(session.config.low)}–{noteName(session.config.high)} · 4/4</span><div className="score-display-controls"><span className="pace-label">{session.mode === 'reading' ? '自由速度' : `${session.config.bpm} BPM`}</span><label className="note-name-toggle"><input type="checkbox" checked={session.config.labels} onChange={toggleLabels} /><span>音名</span></label></div></div>
@@ -147,28 +214,69 @@ export default function App() {
           <div className={`score-feedback ${completed ? 'finished' : ''}`} data-tone={feedbackTone} aria-live="polite">{completed ? <><Trophy /> 本轮完成 · 命中 {hits}/{session.notes.length}{session.mode === 'rhythm' ? ` · 漏音 ${missed}` : ` · 错误尝试 ${session.errors}`}<button className="text-button" onClick={() => restart(true)}>新一轮<ArrowUpRight /></button></> : <span className="feedback-message" key={session.feedback}>{feedbackTone === 'success' ? <CircleCheck /> : feedbackTone === 'retry' ? <Heart /> : <Sparkles />}{session.feedback}</span>}</div>
         </section>
         {touchInput && <div className="touch-keyboard" aria-label="触控试弹键盘">{touchPitches.map(pitch => <button key={pitch} className={`touch-key ${Object.values(session.held).includes(pitch) ? 'pressed' : ''}`} onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); setLastInput(pitch); dispatch({ type: 'input', key: `touch:${event.pointerId}`, pitch, down: true, now: performance.now() }) }} onPointerUp={event => dispatch({ type: 'input', key: `touch:${event.pointerId}`, pitch, down: false, now: performance.now() })} onPointerCancel={event => dispatch({ type: 'input', key: `touch:${event.pointerId}`, pitch, down: false, now: performance.now() })} onLostPointerCapture={event => dispatch({ type: 'input', key: `touch:${event.pointerId}`, pitch, down: false, now: performance.now() })}>{noteName(pitch)}</button>)}</div>}
-        <footer className="transport"><div className="practice-progress"><div className="progress-summary"><Star aria-hidden="true" /><span>{completed ? '本轮完成' : running && session.mode === 'rhythm' && beat < 0 ? '四拍预备' : `第 ${session.index + 1} / ${session.notes.length} 音`}</span></div><div className="round-progress" role="progressbar" aria-label="本轮进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><div style={{ width: `${progress}%` }} /></div><small>{hits} 命中{session.mode === 'rhythm' ? ` · ${missed} 漏音` : ` · ${session.errors} 错误尝试`}</small></div><div className="transport-actions"><button className="icon-button" onClick={() => restart(false)} aria-label="重练当前短谱"><RotateCcw /></button><button className="button primary play-button" disabled={!running && !completed && heldCount > 0} onClick={() => completed ? restart(true) : running ? pause() : dispatch({ type: 'start', now: performance.now() })}>{running ? <Pause /> : completed ? <RotateCcw /> : <Play />}<span>{completed ? '新一轮' : running ? '暂停' : session.status === 'paused' ? '继续练习' : '开始练习'}</span></button></div><button className={`button quiet input-toggle ${touchInput ? 'selected' : ''}`} onClick={() => { dispatch({ type: 'release-source', source: 'touch', now: performance.now() }); setTouchInput(!touchInput) }} aria-label="触控试弹" aria-pressed={touchInput}><KeyboardMusic /><span>触控试弹</span></button></footer>
+        <footer className="transport"><div className="practice-progress"><div className="progress-summary"><Star aria-hidden="true" /><span>{completed ? '本轮完成' : running && session.mode === 'rhythm' && beat < 0 ? '空白小节' : `第 ${session.index + 1} / ${session.notes.length} 音`}</span></div><div className="round-progress" role="progressbar" aria-label="本轮进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><div style={{ width: `${progress}%` }} /></div><small>{hits} 命中{session.mode === 'rhythm' ? ` · ${missed} 漏音` : ` · ${session.errors} 错误尝试`}</small></div><div className="transport-actions"><button className="icon-button" onClick={() => restart(false)} aria-label="重练当前短谱"><RotateCcw /></button><button className="button primary play-button" disabled={!running && !completed && heldCount > 0} onClick={() => completed ? restart(true) : running ? pause() : dispatch({ type: 'start', now: performance.now() })}>{running ? <Pause /> : completed ? <RotateCcw /> : <Play />}<span>{completed ? '新一轮' : running ? '暂停' : session.status === 'paused' ? '继续练习' : '开始练习'}</span></button></div><div className="transport-right"><button className={`button quiet input-toggle ${touchInput ? 'selected' : ''}`} onClick={() => { if (touchInput) { pause(); releaseSource('touch') }; setTouchInput(!touchInput) }} aria-label="触控试弹" aria-pressed={touchInput}><KeyboardMusic /><span>触控试弹</span></button></div></footer>
         {heldCount > 0 && !running && <div className="release-notice" role="status">请先松开全部琴键</div>}
       </main>}
     </div>
     <div className="orientation-guard"><Smartphone /><h1>请横屏使用</h1><p>转动设备，展开你的钢琴练习空间。</p></div>
-    {panel && <Modal title={panel === 'midi' ? 'MIDI 连接' : panel === 'settings' ? '通用设置' : '练习配置'} onClose={() => setPanel(null)} footer={panel === 'practice' ? <><button className="button" onClick={() => setPanel(null)}>取消</button><button className="button primary" onClick={applyConfig}>应用并生成新题</button></> : undefined}>
+    {panel && <Modal catalog={modules.some(module => module.id === panel)} title={panel === 'scoreEditor' ? '编辑乐谱' : panel === 'midi' ? 'MIDI 连接' : panel === 'settings' ? '通用设置' : modules.find(item => item.id === panel)?.title ?? '练习配置'} onClose={() => setPanel(null)} footer={panel === 'personal' ? <>
+        <label className="button quiet personal-import">导入乐谱 JSON<input type="file" accept=".json,application/json" onChange={event => {
+          const file = event.currentTarget.files?.[0]
+          event.currentTarget.value = ''
+          if (file) void importPersonalScore(file)
+        }} /></label>
+        <button className="button primary" onClick={() => editPersonalScore()}>新建乐谱</button>
+      </> : panel === 'scoreEditor' ? <><button className="button" onClick={() => { setImportError(''); setPanel('personal') }}>返回列表</button><button className="button primary" onClick={saveEditedScore}>保存乐谱</button></> : panel === 'practice' ? <><button className="button" onClick={() => setPanel(null)}>取消</button><button className="button primary" onClick={applyConfig}>应用并生成新题</button></> : undefined}>
+      {panel === 'courses' && <section className="module-options">
+        <h3>{beginnerCourse.title}</h3>
+        {beginnerCourse.lessons.map((lesson, index) => <CatalogRow key={lesson.id} title={`第 ${index + 1} 课 · ${lesson.title}`} detail={lesson.instruction} onClick={() => {
+          const score = beginnerCourse.scores.get(lesson.scoreId)
+          if (score) openScore(score, lesson.mode, '进阶课程', lesson.instruction)
+        }} />)}
+      </section>}
+      {panel === 'workouts' && <div className="catalog-groups">
+        {[
+          { title: '识谱', drills: workoutScores.slice(0, 2), random: 'reading' as const, label: '识谱 · 自由速度' },
+          { title: '节奏', drills: workoutScores.slice(2, 4), random: 'rhythm' as const, label: '跟弹 · 固定速度' },
+          { title: '和弦', drills: workoutScores.slice(4, 6) },
+          { title: '双手配合', drills: workoutScores.slice(6) },
+        ].map(({ title, drills, random, label }) => <section className="module-options module-group" key={title}>
+          <h3>{title}</h3>
+          {random && label && <CatalogRow title={label} onClick={() => enter(random)} />}
+          {drills.map(({ mode, score, focus }) => <CatalogRow key={score.title} title={score.title} detail={focus} onClick={() => openScore(score, mode, '专项训练')} />)}
+        </section>)}
+      </div>}
+      {panel === 'songs' && <div className="module-options">{songScores.map(score => <CatalogRow key={score.title} title={score.title} onClick={() => openScore(score, null, '钢琴曲库')} />)}</div>}
+      {panel === 'personal' && <div className="module-options">
+        {personalScores.length === 0 && <p className="help">还没有个人乐谱。可以新建一份，或导入现有乐谱。</p>}
+        {personalScores.map(item => <div className="personal-score-row" key={item.id}>
+          <CatalogRow title={item.score.title} onClick={() => openScore(item.score, null, '我的乐谱')} />
+          <button className="button" aria-label={`编辑 ${item.score.title}`} onClick={() => editPersonalScore(item)}>编辑</button>
+        </div>)}
+        {importError && <p className="error" role="alert">{importError}</p>}
+      </div>}
+      {panel === 'scoreEditor' && <div className="module-options">
+        <label className="course-import">乐谱 JSON<textarea rows={12} value={editor.json} spellCheck={false} onChange={event => setEditor({ ...editor, json: event.target.value })} /></label>
+        {importError && <p className="error" role="alert">{importError}</p>}
+      </div>}
       {panel === 'midi' ? <>
         <div className="connection-summary"><span className={`status-dot ${midi.connected ? 'connected' : ''}`} /><div><strong>{midi.connected ? midi.name : '尚未连接电钢琴'}</strong><p>{midi.connected ? '试弹一个音，确认输入正常。' : '打开电钢琴蓝牙 MIDI，并允许 Beacio 访问此网站。'}</p></div></div>
         {!window.isSecureContext && <p className="error" role="alert">当前不是安全连接。设备 MIDI 访问需要 HTTPS 或 localhost。</p>}
-        <button className="connection-option" disabled={midi.busy} onClick={() => void connection.current?.connectBluetooth()}><Bluetooth /><div><strong>{midi.busy && midi.path === 'bluetooth' ? '正在连接…' : '连接蓝牙 MIDI'}</strong><small>Safari + Beacio 蓝牙接口</small></div><ChevronRight /></button>
-        <button className="connection-option" disabled={midi.busy} onClick={() => void connection.current?.connectWebMidi()}><Piano /><div><strong>{midi.busy && midi.path === 'webmidi' ? '正在连接…' : '使用系统 MIDI'}</strong><small>设备由系统或插件提供 MIDI 接口时使用</small></div><ChevronRight /></button>
+        <button className="connection-option" disabled={midi.busy || outputTest.running} onClick={() => void connection.current?.connectBluetooth()}><Bluetooth /><div><strong>{midi.busy && midi.path === 'bluetooth' ? '正在连接…' : '连接蓝牙 MIDI'}</strong><small>Safari + Beacio 蓝牙接口</small></div><ChevronRight /></button>
+        <button className="connection-option" disabled={midi.busy || outputTest.running} onClick={() => void connection.current?.connectWebMidi()}><Piano /><div><strong>{midi.busy && midi.path === 'webmidi' ? '正在连接…' : '使用系统 MIDI'}</strong><small>设备由系统或插件提供 MIDI 接口时使用</small></div><ChevronRight /></button>
         {midi.error && <p className="error" role="alert">{midi.error}</p>}
         <div className="input-monitor"><span>最近收到的音符</span><strong aria-live="polite">{lastInput === null ? '等待输入' : noteName(lastInput)}</strong></div>
-        {(midi.connected || midi.busy) && <button className="button" onClick={() => connection.current?.disconnect()}><Unplug />{midi.busy ? '取消连接' : '断开连接'}</button>}
+        {midi.connected && midi.path === 'bluetooth' && <button className="button" disabled={outputTest.running} onClick={() => void testOutput()}>{outputTest.running ? '正在试奏…' : '试奏中央 C'}</button>}
+        {outputTest.message && <p className="help" role="status">{outputTest.message}</p>}
+        {(midi.connected || midi.busy) && <button className="button" disabled={outputTest.running} onClick={() => connection.current?.disconnect()}><Unplug />{midi.busy ? '取消连接' : '断开连接'}</button>}
         <p className="help">切换页面不会主动断开连接。连接中断时练习暂停。蓝牙适配需在你的 Beacio 与电钢琴上实测。</p>
       </> : panel === 'settings' ? <>
         <label className="setting-row"><span>外观</span><select value={theme} onChange={event => setAppearance(event.target.value as Theme)}><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
         <div className="setting-info"><KeyboardMusic /><div><strong>电脑键盘试弹</strong><p>A S D F G H J K 对应 C4–C5 白键；W E T Y U 对应黑键。仅在练习页且弹窗关闭时生效。</p></div></div>
         <div className="setting-info"><Home /><div><strong>练习状态</strong><p>返回主页或打开卡片会暂停。刷新页面后重新开始，练习配置与外观保存在本机。</p></div></div>
-        <p className="help">本版不提供网页钢琴音色，由电钢琴本身发声。节拍跟弹提供视觉预备与播放轴，尚无节拍器声音。</p>
+        <p className="help">本版不提供网页钢琴音色，由电钢琴本身发声。跟弹从谱前的空白小节开始滚动。</p>
         {storageError && <p className="error" role="alert">{storageError}</p>}
-      </> : <>
+      </> : panel === 'practice' ? <>
         <p className="help">应用配置会生成新短谱并清空本轮成绩；关闭或取消保留原练习。</p>
         <label className="setting-row"><span>快捷音域</span><select value={practicePresets.find(preset => preset.clef === draft.clef && preset.low === draft.low && preset.high === draft.high && preset.pool === draft.pool)?.id ?? 'custom'} onChange={event => { const preset = practicePresets.find(item => item.id === event.target.value); if (preset) { setDraft({ ...draft, clef: preset.clef, low: preset.low, high: preset.high, pool: preset.pool }); setFormError('') } }}><option value="custom" disabled>自定义音域</option>{practicePresets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label>
         <label className="setting-row"><span>出题策略</span><select value={draft.strategy} onChange={event => { setDraft({ ...draft, strategy: event.target.value as PracticeConfig['strategy'] }); setFormError('') }}><option value="random">随机识谱</option><option value="stepwise">级进练习</option><option value="leaps">跳进练习</option></select></label>
@@ -181,8 +289,8 @@ export default function App() {
         <label className="setting-row"><span>速度 BPM</span><input type="number" min="40" max="180" inputMode="numeric" value={Number.isNaN(draft.bpm) ? '' : draft.bpm} onChange={event => setDraft({ ...draft, bpm: event.target.valueAsNumber })} /></label>
         <label className="setting-row"><span>音名提示</span><input type="checkbox" checked={draft.labels} onChange={event => setDraft({ ...draft, labels: event.target.checked })} /></label>
         {formError && <p className="error" role="alert">{formError}</p>}
-        <p className="help">当前每音一拍。跟弹起音窗口为目标前后各 0.3 拍，不评价持音时长；四拍预备期间不计分。</p>
-      </>}
+        <p className="help">当前每音一拍。跟弹起音窗口为目标前后各 0.3 拍，不评价持音时长；空白小节期间不计分。</p>
+      </> : null}
     </Modal>}
     {storageError && !panel && <button className="storage-notice" onClick={() => setStorageError('')} aria-label="关闭存储提示">{storageError}<X /></button>}
   </>

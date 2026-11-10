@@ -1,14 +1,15 @@
 import { Accidental, Barline, Beam, Dot, Formatter, Fraction, Renderer, Stave, StaveConnector, StaveNote, StaveTie, Voice } from 'vexflow/bravura'
+import { notation } from './notation'
 import { stylePreviewBeam, stylePreviewNote } from './previewNotation'
 import { measureEdgeInset, measureLeadingInset, noteAnchorOffset, practiceQuarterWidth, timeSpacing } from './spacing'
-import { assertScore, durationTicks, measureTicks, pitchToMidi, type Score, type ScoreEvent } from './score'
+import { assertScore, durationTicks, measureTicks, pitchToMidi, TICKS_PER_QUARTER, type Score, type ScoreEvent } from './score'
 
 const keys = ['Cb', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F', 'C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#']
-export interface PreviewLayout { width: number; height: number; pitchGuides?: { middleC: number; gap: number; clef: 'treble' | 'bass' }[]; positions: { tick: number; x: number }[] }
+export interface PreviewLayout { width: number; height: number; pitchGuides?: { middleC: number; gap: number; clef: 'treble' | 'bass' }[]; positions: { tick: number; x: number }[]; heads?: Map<number, Map<number, { x: number; y: number; rx: number; ry: number; tilt: number }>> }
 const label = (event: ScoreEvent) => event.kind === 'notes' ? event.notes.map(note => `${note.pitch.step}${note.pitch.alter === 1 ? '♯' : note.pitch.alter === -1 ? '♭' : ''}${note.pitch.octave}`).join(' · ') : ''
 
 /** Draw all bars in one horizontal strip. VexFlow aligns shared ticks across voices. */
-export function drawScore(host: HTMLDivElement, score: Score, labels: boolean, availableHeight: number, availableWidth: number): PreviewLayout {
+export function drawScore(host: HTMLDivElement, score: Score, labels: boolean, availableHeight: number, availableWidth: number, leadIn = false): PreviewLayout {
   assertScore(score)
   host.replaceChildren()
   const barTicks = measureTicks(score.meter)
@@ -25,8 +26,9 @@ export function drawScore(host: HTMLDivElement, score: Score, labels: boolean, a
   const quarter = practiceQuarterWidth(availableWidth) / scale
   const grids = Array.from({ length: score.measures }, (_, bar) => timeSpacing(score.voices.flatMap(voice => voice.events.filter(event => Math.floor(event.start / barTicks) === bar).map(event => event.start - bar * barTicks)), barTicks, quarter))
   const headerWidth = Math.max(...score.voices.map(voice => new Stave(0, 0, 500).addClef(voice.clef).addKeySignature(keys[score.keySignature + 7]).addTimeSignature(`${score.meter.numerator}/${score.meter.denominator}`).getNoteStartX()))
-  const widths = grids.map((grid, bar) => grid.width + (bar === 0 ? headerWidth : 0))
-  const width = widths.reduce((sum, w) => sum + w, 0) + 24
+  const widths = grids.map((grid, bar) => grid.width + (bar === 0 && !leadIn ? headerWidth : 0))
+  const leadInWidth = leadIn ? headerWidth + barTicks / TICKS_PER_QUARTER * quarter : 0
+  const width = leadInWidth + widths.reduce((sum, w) => sum + w, 0) + 24
   const renderer = new Renderer(host, Renderer.Backends.SVG)
   renderer.resize(width * scale, height * scale)
   const ctx = renderer.getContext()
@@ -34,8 +36,23 @@ export function drawScore(host: HTMLDivElement, score: Score, labels: boolean, a
   ctx.setFillStyle('currentColor').setStrokeStyle('currentColor')
   const noteMap = new Map<string, { rendered: StaveNote; index: number }>()
   const eventMap = new Map<string, StaveNote>()
+  const heads: NonNullable<PreviewLayout['heads']> = new Map()
+  const pitchGuides: NonNullable<PreviewLayout['pitchGuides']> = []
   const positions = new Map<number, number>()
   let x = 12
+  if (leadIn) {
+    const staves = score.voices.map((voice, i) => new Stave(x, staffY(i), leadInWidth, { spacingBetweenLinesPx: gap })
+      .addClef(voice.clef)
+      .addKeySignature(keys[score.keySignature + 7])
+      .addTimeSignature(`${score.meter.numerator}/${score.meter.denominator}`)
+      .setContext(ctx))
+    staves.forEach(stave => stave.draw())
+    if (grand && staves.length === 2) {
+      const [upper, lower] = [...staves].sort((a, b) => a.getY() - b.getY())
+      new StaveConnector(upper, lower).setType(StaveConnector.type.BRACE).setContext(ctx).draw()
+    }
+    x += leadInWidth
+  }
   for (let bar = 0; bar < score.measures; bar++) {
     const barWidth = widths[bar]
     const staves: Stave[] = []
@@ -44,7 +61,7 @@ export function drawScore(host: HTMLDivElement, score: Score, labels: boolean, a
     const barEvents: ScoreEvent[][] = []
     for (const [vi, voice] of score.voices.entries()) {
       const stave = new Stave(x, staffY(vi), barWidth, { spacingBetweenLinesPx: gap })
-      if (bar === 0) stave.addClef(voice.clef).addKeySignature(keys[score.keySignature + 7]).addTimeSignature(`${score.meter.numerator}/${score.meter.denominator}`)
+      if (bar === 0 && !leadIn) stave.addClef(voice.clef).addKeySignature(keys[score.keySignature + 7]).addTimeSignature(`${score.meter.numerator}/${score.meter.denominator}`)
       if (bar === score.measures - 1) stave.setEndBarType(Barline.type.END)
       stave.setDefaultLedgerLineStyle({ strokeStyle: 'currentColor', lineWidth: 1.4 })
       const events = voice.events.filter(event => Math.floor(event.start / barTicks) === bar)
@@ -64,13 +81,14 @@ export function drawScore(host: HTMLDivElement, score: Score, labels: boolean, a
       const vfVoice = new Voice({ numBeats: score.meter.numerator, beatValue: score.meter.denominator }).addTickables(notes)
       // Each stave has its own accidental state, reset at every barline.
       Accidental.applyAccidentals([vfVoice], keys[score.keySignature + 7])
+      if (bar === 0) pitchGuides.push({ middleC: (voice.clef === 'bass' ? stave.getYForLine(0) - gap : stave.getYForLine(4) + gap) * scale, gap: gap * scale, clef: voice.clef })
       staves.push(stave); voices.push(vfVoice); allNotes.push(notes); barEvents.push(events)
     }
-    const noteStart = x + (bar === 0 ? headerWidth : 0)
+    const noteStart = x + (barWidth - grids[bar].width)
     staves.forEach(stave => { stave.setNoteStartX(noteStart); stave.setContext(ctx).draw() })
     if (staves.length === 2 && staves[0].getY() !== staves[1].getY()) {
       const ordered = [...staves].sort((a, b) => a.getY() - b.getY())
-      new StaveConnector(ordered[0], ordered[1]).setType(bar === 0 ? StaveConnector.type.BRACE : StaveConnector.type.SINGLE_LEFT).setContext(ctx).draw()
+      new StaveConnector(ordered[0], ordered[1]).setType(bar === 0 && !leadIn ? StaveConnector.type.BRACE : StaveConnector.type.SINGLE_LEFT).setContext(ctx).draw()
       new StaveConnector(staves[0], staves[1]).setType(StaveConnector.type.SINGLE_RIGHT).setContext(ctx).draw()
     }
     const beams = allNotes.flatMap(notes => Beam.generateBeams(notes, { groups: [new Fraction(score.meter.denominator === 8 ? 3 : 1, score.meter.denominator)], maintainStemDirections: false }))
@@ -102,20 +120,34 @@ export function drawScore(host: HTMLDivElement, score: Score, labels: boolean, a
     }
     voices.forEach((voice, vi) => voice.draw(ctx, staves[vi]))
     beams.forEach(beam => beam.setContext(ctx).draw())
+    const barAnchors = new Map<number, number>()
     barEvents.forEach((events, vi) => events.forEach(event => {
       const note = eventMap.get(event.id)!
       const px = note.getAbsoluteX() + noteAnchorOffset
-      positions.set(event.start, px * scale)
+      // A left-shifted voice must not move the shared time axis backwards.
+      barAnchors.set(event.start, Math.max(barAnchors.get(event.start) ?? 0, px * scale))
       const element = note.getSVGElement()
       if (element) { element.dataset.eventId = event.id; element.dataset.kind = event.kind; element.dataset.tick = String(event.start); element.dataset.voice = String(vi); element.dataset.anchorX = String(note.getAbsoluteX()); element.dataset.durationTicks = String(durationTicks(event.duration)) }
       stylePreviewNote(note, event, beams.find(beam => beam.notes.includes(note)))
-      if (labels && event.kind === 'notes') {
+      if (element && event.kind === 'notes') {
+        const atTick = heads.get(event.start) ?? new Map()
+        const ordered = [...event.notes].sort((a, b) => pitchToMidi(a.pitch) - pitchToMidi(b.pitch))
+        element.querySelectorAll('.preview-note-head').forEach((head, i) => {
+          const pitch = pitchToMidi(ordered[i].pitch)
+          if (atTick.has(pitch)) return
+          const dimension = (name: string) => Number(head.getAttribute(name)) * scale
+          atTick.set(pitch, { x: dimension('cx'), y: dimension('cy'), rx: dimension('rx'), ry: dimension('ry'), tilt: event.duration.denominator === 1 ? -6 : notation.tilt })
+        })
+        heads.set(event.start, atTick)
+      }
+      if (element && labels && event.kind === 'notes') {
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text')
         text.setAttribute('x', String(px)); text.setAttribute('y', String(labelTop + vi * 26)); text.setAttribute('text-anchor', 'middle'); text.setAttribute('class', 'preview-note-label')
         text.textContent = label(event)
-        host.querySelector('svg')!.append(text)
+        element.append(text)
       }
     }))
+    for (const [tick, anchor] of barAnchors) positions.set(tick, anchor)
     host.querySelectorAll('.vf-beam').forEach(group => group.remove())
     beams.forEach(beam => stylePreviewBeam(host.querySelector('svg')!, beam))
     positions.set((bar + 1) * barTicks, (x + barWidth) * scale)
@@ -131,9 +163,10 @@ export function drawScore(host: HTMLDivElement, score: Score, labels: boolean, a
   }))
   const svg = host.querySelector('svg')!
   svg.dataset.measureWidths = JSON.stringify(grids.map(grid => grid.width))
+  if (leadIn) svg.dataset.leadIn = 'true'
   svg.dataset.headerWidth = String(headerWidth)
   svg.dataset.scoreTitle = score.title; svg.dataset.middleC = String(24 + 9 * gap); svg.dataset.continuousPitch = String(grand); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', `${score.title}，${score.voices.length} 个声部，${score.meter.numerator}/${score.meter.denominator}`)
-  return { width: width * scale, height: height * scale, pitchGuides: score.voices.map((voice, i) => ({ middleC: (staffY(i) + (voice.clef === 'bass' ? 3 : 9) * gap) * scale, gap: gap * scale, clef: voice.clef })), positions: [...positions].map(([tick, px]) => ({ tick, x: px })).sort((a, b) => a.tick - b.tick) }
+  return { width: width * scale, height: height * scale, pitchGuides, heads, positions: [...positions].map(([tick, px]) => ({ tick, x: px })).sort((a, b) => a.tick - b.tick) }
 }
 export function cursorX(positions: PreviewLayout['positions'], tick: number): number {
   if (!positions.length) return 0

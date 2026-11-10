@@ -136,6 +136,25 @@ export class MidiConnection {
       if (generation === this.generation) this.publish({ busy: false, error: '无法访问系统 MIDI，请检查网站权限。' })
     }
   }
+  async testBluetoothOutput() {
+    const characteristic = this.characteristic
+    if (!characteristic || !this.state.connected || this.state.path !== 'bluetooth') throw new Error('请先连接蓝牙 MIDI。')
+    const { writeWithoutResponse, write } = characteristic.properties
+    if (!writeWithoutResponse && !write) throw new Error('当前蓝牙连接未提供 MIDI 写入能力。')
+    const send = (status: number, velocity: number) => {
+      const timestamp = Math.floor(performance.now()) & 0x1fff
+      const packet = Uint8Array.of(0x80 | (timestamp >> 7), 0x80 | (timestamp & 0x7f), status, 60, velocity)
+      if (writeWithoutResponse && typeof characteristic.writeValueWithoutResponse === 'function') return characteristic.writeValueWithoutResponse(packet)
+      if (write && typeof characteristic.writeValueWithResponse === 'function') return characteristic.writeValueWithResponse(packet)
+      return characteristic.writeValue(packet)
+    }
+    try {
+      await send(0x90, 48)
+      await new Promise<void>(resolve => setTimeout(resolve, 220))
+    } finally {
+      await send(0x80, 0)
+    }
+  }
   disconnect() {
     this.generation++
     this.characteristic?.removeEventListener('characteristicvaluechanged', this.notification)

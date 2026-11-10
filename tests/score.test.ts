@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { assertScore, durationTicks, measureTicks, midiToPitch, parseScore, pitchToMidi, serializeScore, validateScore, type Score } from '../src/music/score'
-import { foundationScore, compoundScore, scoreExamples } from '../src/music/examples'
+import { foundationScore, compoundScore, scoreExamples, workoutScores } from '../src/music/examples'
 import { singleNotesToScore, scoreToSingleNotes } from '../src/music/adapter'
 import { createSession, defaultConfig } from '../src/practice'
 
@@ -9,7 +9,7 @@ const invalid = (edit: (score: Score) => void, message: string) => { const score
 
 describe('乐谱模型与序列化', () => {
   it('验证谱例包含双声部、和弦、休止、附点和跨小节部分延音，往返无损', () => {
-    scoreExamples.forEach(score => { expect(validateScore(score)).toEqual([]); expect(parseScore(serializeScore(score))).toEqual(score) })
+    [...scoreExamples, ...workoutScores.map(item => item.score)].forEach(score => { expect(validateScore(score)).toEqual([]); expect(parseScore(serializeScore(score))).toEqual(score) })
     expect(compoundScore.meter).toEqual({ numerator: 6, denominator: 8 })
   })
   it('全部基础时值和单附点用整数表示，所有拍号小节长度准确', () => {

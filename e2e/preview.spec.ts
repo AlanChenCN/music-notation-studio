@@ -135,7 +135,7 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1180, height: 820
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(viewport.height)
     await page.screenshot({ path: `test-results/preview-${viewport.width}.png` })
     await page.getByRole('button', { name: '返回主页', exact: true }).last().click()
-    await expect(page.getByRole('heading', { name: /从一个音符/ })).toBeVisible()
+    await expect(page.locator('.home-modules .module-card')).toHaveCount(4)
     expect(errors).toEqual([])
   })
 }
@@ -147,13 +147,36 @@ test('谱例识谱通过键盘松键推进，并可返回视觉预览', async ({
   await page.locator('.preview-selector select').selectOption({ label: '时值与宽度对照' })
   await page.getByRole('button', { name: '练习识谱' }).click()
   await page.getByRole('button', { name: '开始 / 继续' }).click()
+  const anchor = page.locator('.preview-reading-anchor')
+  const anchorX = (await anchor.boundingBox())!.x
+  const track = page.locator('.preview-strip.reading-note-track')
+  const before = await track.evaluate(el => getComputedStyle(el).transform)
+  await page.keyboard.down('d')
+  const wrong = page.locator('[data-held-pitch="64"]')
+  await expect(wrong).toBeVisible()
+  await expect.poll(async () => {
+    const [mark, head] = await Promise.all([wrong.boundingBox(), page.locator('.preview-current .preview-note-head').first().boundingBox()])
+    return Math.abs(mark!.x + mark!.width / 2 - head!.x - head!.width / 2)
+  }).toBeLessThan(1)
+  await page.keyboard.up('d')
+  await page.getByRole('button', { name: '重练谱例' }).click()
+  await page.getByRole('button', { name: '开始 / 继续' }).click()
   await page.keyboard.down('g')
-  await expect(page.locator('[data-held-pitch="67"]')).toBeVisible()
+  const marker = page.locator('[data-held-pitch="67"]')
+  await expect(marker).toBeVisible()
+  await expect.poll(async () => {
+    const [mark, head] = await Promise.all([marker.boundingBox(), page.locator('.preview-current .preview-note-head').first().boundingBox()])
+    return Math.hypot(mark!.x + mark!.width / 2 - head!.x - head!.width / 2,
+      mark!.y + mark!.height / 2 - head!.y - head!.height / 2)
+  }).toBeLessThan(1)
   await expect(page.getByText('音已弹对，请松键')).toBeVisible()
   await page.keyboard.up('g')
   await expect(page.locator('[data-held-pitch="67"]')).toHaveCount(0)
   await expect(page.getByText('1 命中 · 0 错弹')).toBeVisible()
   await expect(page.locator('.preview-passed')).toHaveCount(1)
+  await expect.poll(() => track.evaluate(el => getComputedStyle(el).transform)).not.toBe(before)
+  expect((await anchor.boundingBox())!.x).toBeCloseTo(anchorX)
+  await expect(track).toHaveCSS('transition-duration', '0.28s')
   await page.getByRole('button', { name: '暂停', exact: true }).click()
   await page.getByRole('button', { name: '触控试弹' }).click()
   await expect(page.getByRole('button', { name: 'G4', exact: true })).toBeInViewport()
@@ -161,7 +184,7 @@ test('谱例识谱通过键盘松键推进，并可返回视觉预览', async ({
   await expect(page.getByRole('button', { name: '播放游标' })).toBeVisible()
 })
 
-test('谱例跟弹从四拍预备进入计分，并在谱尾结算', async ({ page }) => {
+test('谱例跟弹从空白小节进入计分，并在谱尾结算', async ({ page }) => {
   await page.setViewportSize({ width: 568, height: 320 })
   await page.clock.install()
   await page.goto('/')
@@ -169,7 +192,7 @@ test('谱例跟弹从四拍预备进入计分，并在谱尾结算', async ({ pa
   await page.locator('.preview-selector select').selectOption({ label: '时值与宽度对照' })
   await page.getByRole('button', { name: '练习跟弹' }).click()
   await page.getByRole('button', { name: '开始 / 继续' }).click()
-  await expect(page.getByText(/^四拍预备 ·/)).toBeVisible()
+  await expect(page.getByText(/^空白小节 ·/)).toBeVisible()
   await page.keyboard.press('g')
   await expect(page.getByText('0 命中 · 0 错弹 · 0 漏弹 · 0 提前松键')).toBeVisible()
   await page.clock.fastForward(3_500)
@@ -181,7 +204,128 @@ test('谱例跟弹从四拍预备进入计分，并在谱尾结算', async ({ pa
   expect((await axis.boundingBox())!.x).toBeCloseTo(anchor)
   expect((await firstNote.boundingBox())!.x).toBeLessThan(before)
   await page.clock.fastForward(30_000)
-  await expect(page.getByText('本轮完成')).toBeVisible()
+  await expect(page.locator('.score-feedback').getByText('本轮完成')).toBeVisible()
   await expect(page.locator('.preview-missed').first()).toBeAttached()
   await expect(page.getByRole('button', { name: '再练一次' })).toBeInViewport()
+})
+
+test('试听推动谱面游标，暂停后停在当前位置', async ({ page }) => {
+  await page.setViewportSize({ width: 568, height: 320 })
+  await page.goto('/')
+  await page.getByRole('button', { name: '钢琴曲库' }).click()
+  await page.getByRole('button', { name: '两只老虎', exact: true }).click()
+  const position = page.getByRole('slider', { name: '谱面位置' })
+  await expect(page.getByRole('button', { name: '试听', exact: true })).toBeEnabled()
+  await position.fill('64')
+  const cursor = page.locator('.preview-cursor')
+  const anchor = (await cursor.boundingBox())!.x
+  await page.getByRole('button', { name: '试听', exact: true }).click()
+  await expect.poll(async () => Number(await position.inputValue())).toBeGreaterThan(68)
+  expect(Math.abs((await cursor.boundingBox())!.x - anchor)).toBeLessThan(2)
+  await page.getByRole('button', { name: '暂停试听' }).click()
+  const paused = await position.inputValue()
+  await expect(page.getByRole('button', { name: '试听', exact: true })).toBeVisible()
+  await expect(position).toHaveValue(paused)
+  await page.getByRole('button', { name: '回到谱例开头' }).click()
+  await expect(position).toHaveValue('0')
+})
+
+test('曲谱预览切换到识谱时，共用控件和谱面卡片保持原位', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 })
+  await page.goto('/')
+  await page.getByRole('button', { name: '钢琴曲库' }).click()
+  await page.getByRole('button', { name: '两只老虎', exact: true }).click()
+  await expect(page.getByRole('button', { name: '播放游标' })).toBeEnabled()
+  const selectors = ['.score-surface', '.score-meta .note-name-toggle', '.transport-actions .icon-button', '.transport-actions .primary']
+  const before = await Promise.all(selectors.map(selector => page.locator(selector).boundingBox()))
+  await page.getByRole('button', { name: '练习识谱' }).click()
+  await expect(page.getByRole('button', { name: '开始 / 继续' })).toBeEnabled()
+  for (const [index, selector] of selectors.entries()) {
+    const box = (await page.locator(selector).boundingBox())!
+    expect(box.x).toBeCloseTo(before[index]!.x)
+    expect(box.y).toBeCloseTo(before[index]!.y)
+  }
+  expect((await page.locator('.score-surface').boundingBox())!.height).toBe(before[0]!.height)
+})
+
+for (const button of ['播放游标', '试听']) {
+  test(`${button}跨小节及接近谱尾时保持游标位置`, async ({ page }) => {
+    await page.setViewportSize({ width: 568, height: 320 })
+    await page.goto('/')
+    await page.getByRole('button', { name: '钢琴曲库' }).click()
+    await page.getByRole('button', { name: '两只老虎', exact: true }).click()
+    const start = page.getByRole('button', { name: button, exact: true })
+    await expect(start).toBeEnabled()
+    const position = page.getByRole('slider', { name: '谱面位置' })
+    const cursor = page.locator('.preview-cursor')
+    const viewport = page.locator('.preview-viewport')
+    for (const [from, to] of [[30, 34], [250, 256]]) {
+      await position.fill(String(from))
+      const anchor = (await cursor.boundingBox())!.x
+      const scrollBefore = await viewport.evaluate(el => el.scrollLeft)
+      await start.click()
+      await expect.poll(async () => Number(await position.inputValue())).toBeGreaterThanOrEqual(to)
+      expect(Math.abs((await cursor.boundingBox())!.x - anchor)).toBeLessThan(2)
+      expect(await viewport.evaluate(el => el.scrollLeft)).toBeGreaterThan(scrollBefore)
+    }
+  })
+}
+
+test('打开设置会暂停试听，音名偏好在谱面之间共享', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 })
+  await page.goto('/')
+  await page.getByRole('button', { name: '谱例预览' }).click()
+  await page.getByRole('checkbox', { name: '音名' }).check()
+  await page.getByRole('button', { name: '试听', exact: true }).click()
+  await expect(page.getByRole('button', { name: '暂停试听' })).toBeVisible()
+  await page.getByRole('button', { name: '通用设置' }).click()
+  await page.getByRole('button', { name: '关闭', exact: true }).click()
+  await expect(page.getByRole('button', { name: '试听', exact: true })).toBeVisible()
+  await page.getByRole('main').getByRole('button', { name: '返回主页' }).click()
+  await page.getByRole('button', { name: /^专项训练/ }).click()
+  await page.getByRole('button', { name: /自由速度/ }).click()
+  await expect(page.getByRole('checkbox', { name: '音名' })).toBeChecked()
+})
+
+test('识谱沿用预览起点，跟弹提前一小节滚动', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 })
+  await page.clock.install()
+  await page.goto('/')
+  await page.getByRole('button', { name: '钢琴曲库' }).click()
+  await page.getByRole('button', { name: '两只老虎', exact: true }).click()
+  const firstHead = page.locator('.preview-note-head').first()
+  await expect(firstHead).toBeVisible()
+  const origin = (await firstHead.boundingBox())!.x
+  const samePosition = async () => {
+    await expect.poll(async () => Math.abs(((await firstHead.boundingBox())?.x ?? -1000) - origin)).toBeLessThan(1)
+  }
+  await page.getByRole('button', { name: '练习识谱' }).click()
+  await samePosition()
+  await page.getByRole('button', { name: '返回预览' }).click()
+  await page.getByRole('button', { name: '练习跟弹' }).click()
+  await expect(page.locator('.preview-paper svg[data-lead-in]')).toBeAttached()
+  const start = page.getByRole('button', { name: '开始 / 继续' })
+  await expect(start).toBeEnabled()
+  const before = (await firstHead.boundingBox())!.x
+  expect(before).toBeGreaterThan(origin)
+  await start.click()
+  await page.clock.fastForward(1500)
+  await expect(page.getByText(/^空白小节 ·/)).toBeVisible()
+  expect((await firstHead.boundingBox())!.x).toBeLessThan(before)
+  expect((await firstHead.boundingBox())!.x).toBeGreaterThan(origin)
+})
+
+test('跟弹时四分音符跨小节仍保持等距', async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 820 })
+  await page.goto('/')
+  await page.getByRole('button', { name: '钢琴曲库' }).click()
+  await page.getByRole('button', { name: '两只老虎', exact: true }).click()
+  await page.getByRole('button', { name: '练习跟弹' }).click()
+  const notes = page.locator('.preview-paper svg[data-lead-in] [data-event-id]')
+  await expect(notes.first()).toBeAttached()
+  const anchors = await notes.evaluateAll(elements => elements.slice(0, 8).map(element => Number(element.getAttribute('data-anchor-x'))))
+  const quarter = anchors[1] - anchors[0]
+  for (let i = 2; i < anchors.length; i++) {
+    expect(anchors[i] - anchors[i - 1]).toBeCloseTo(quarter)
+  }
 })

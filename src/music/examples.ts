@@ -60,3 +60,61 @@ export const durationScore: Score = {
   ] }],
 }
 export const scoreExamples = [foundationScore, compoundScore, ...simpleMeterScores, accidentalScore, restScore, middleCScore, durationScore]
+
+
+// Traditional melody, arranged as a short beginner exercise.
+const brothers = [[60, 62, 64, 60], [60, 62, 64, 60], [64, 65, 67], [64, 65, 67], [67, 69, 67, 65, 64, 60], [67, 69, 67, 65, 64, 60], [60, 55, 60], [60, 55, 60]]
+export const songScores: Score[] = [{
+  version: 1, title: '两只老虎', meter: { numerator: 4, denominator: 4 }, tempo: { quarterBpm: 72 }, keySignature: 0, measures: brothers.length,
+  voices: [{ id: 'melody', clef: 'treble', events: brothers.flatMap((bar, i) => bar.map((pitch, j) => sound(
+    `song-${i}-${j}`, i * 32 + (bar.length === 6 ? (j < 4 ? j * 4 : 16 + (j - 4) * 8) : j * 8),
+    bar.length === 6 && j < 4 ? 8 : bar.length === 3 && j === 2 ? 2 : 4, [pitch],
+  ))) }],
+}]
+
+type DrillBeat = [Duration['denominator'], number[]?]
+
+function drillScore(title: string, bpm: number, upper: DrillBeat[][], lower?: DrillBeat[][]): Score {
+  const voice = (id: string, clef: 'treble' | 'bass', bars: DrillBeat[][]) => ({
+    id, clef,
+    events: bars.flatMap((bar, i) => {
+      let tick = i * 32
+      return bar.map(([denominator, pitches], j) => {
+        const eventId = `${id}-${i}-${j}`
+        const event = pitches ? sound(eventId, tick, denominator, pitches) : rest(eventId, tick, denominator)
+        tick += 32 / denominator
+        return event
+      })
+    }),
+  })
+  return {
+    version: 1, title, meter: { numerator: 4, denominator: 4 }, tempo: { quarterBpm: bpm }, keySignature: 0,
+    measures: upper.length, voices: [voice('upper', 'treble', upper), ...(lower ? [voice('lower', 'bass', lower)] : [])],
+  }
+}
+
+export const workoutScores = [
+  { mode: 'reading', focus: '在五个相邻音之间来回找键', score: drillScore('五指级进', 72,
+    [[60, 62, 64, 65], [67, 65, 64, 62], [60, 62, 64, 62], [64, 65, 67, 60]].map(bar => bar.map(pitch => [4, [pitch]]))) },
+  { mode: 'reading', focus: '练习看见隔开的音就直接落键', score: drillScore('隔音跳进', 72,
+    [[60, 64, 62, 65], [64, 67, 65, 69], [67, 71, 69, 72], [72, 67, 64, 60]].map(bar => bar.map(pitch => [4, [pitch]]))) },
+  { mode: 'rhythm', focus: '固定 G，专练什么时候按、什么时候松', score: drillScore('长短音切换', 68, [
+    [[2, [67]], [4, [67]], [8, [67]], [8, [67]]], [[8, [67]], [8, [67]], [4, [67]], [2, [67]]],
+    [[4, [67]], [8, [67]], [8, [67]], [2, [67]]], [[1, [67]]],
+  ]) },
+  { mode: 'rhythm', focus: '同一个音，在空拍后准确进入', score: drillScore('休止不抢拍', 68, [
+    [[4, [67]], [4], [4, [67]], [4]], [[4], [4, [67]], [2, [67]]],
+    [[8, [67]], [8], [4, [67]], [4], [4, [67]]], [[2], [2, [67]]],
+  ]) },
+  { mode: 'reading', focus: '看清两个音，同时按下', score: drillScore('双音落键', 68,
+    [[[60, 64], [62, 65]], [[64, 67], [65, 69]], [[67, 71], [65, 69]], [[64, 67], [60, 64]]].map(bar => bar.map(pitches => [2, pitches]))) },
+  { mode: 'rhythm', focus: '让三个音一起落在拍点上', score: drillScore('三和弦落拍', 60, [
+    [[2, [60, 64, 67]], [2]], [[2, [60, 65, 69]], [2]], [[2, [62, 67, 71]], [2]], [[1, [60, 64, 67]]],
+  ]) },
+  { mode: 'reading', focus: '左手保持长音，右手继续移动', score: drillScore('双手配合', 60,
+    [[60, 62, 64, 67], [65, 64, 62, 60], [62, 65, 67, 71], [72, 67, 64, 60]].map(bar => bar.map(pitch => [4, [pitch]])),
+    [48, 53, 55, 48].map(pitch => [[1, [pitch]]])) },
+  { mode: 'rhythm', focus: '双手一起起音，再按不同的时值松键', score: drillScore('双手不同松键', 60,
+    [[60, 64, 67, 64], [62, 65, 69, 65], [64, 67, 72, 67], [67, 64, 62, 60]].map(bar => bar.map(pitch => [4, [pitch]])),
+    [48, 50, 52, 48].map(pitch => [[2, [pitch]], [2]])) },
+] as const

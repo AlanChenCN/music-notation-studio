@@ -27,7 +27,7 @@ export default function Staff({ session }: { session: Session }) {
   const y = (step: number) => 14 + (highest - step) * gap / 2
   const bottom = y(baseStep)
   const top = y(baseStep + 8)
-  const beat = session.mode === 'rhythm' ? Math.max(-1, sessionBeat(session)) : session.index
+  const beat = session.mode === 'rhythm' ? sessionBeat(session) : session.index
   const spacing = practiceQuarterWidth(width)
   const firstPitchSharp = session.notes.some((pitch, index) => index % 4 === 0 && [1, 3, 6, 8, 10].includes(pitch % 12))
   const leadingInset = measureLeadingInset(firstPitchSharp ? Math.max(6, gap * notation.head / 14) + 13 : 0) + noteAnchorOffset
@@ -82,7 +82,7 @@ export default function Staff({ session }: { session: Session }) {
         })}
         </g>
         {reading && session.status !== 'complete' && <circle cx={anchor} cy={height - 12} r="3" className="reading-anchor" />}
-        {held.filter(pitch => pitch >= session.config.low - 12 && pitch <= session.config.high + 12).map(pitch => <ellipse key={pitch} cx={anchor} cy={y(pitchStep(pitch))} rx={Math.max(8, gap * .8)} ry={Math.max(6, gap * .62)} className="played-note" />)}
+        {held.filter(pitch => pitch >= session.config.low - 12 && pitch <= session.config.high + 12).map(pitch => <ellipse key={pitch} cx={anchor} cy={y(pitchStep(pitch))} rx={Math.max(6, gap * notation.head / 14)} ry={Math.max(6, gap * notation.head / 14) * notation.ratio} transform={`rotate(${notation.tilt} ${anchor} ${y(pitchStep(pitch))})`} className="played-note" />)}
       </g>
     </svg>
   </div>

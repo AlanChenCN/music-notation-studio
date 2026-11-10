@@ -93,7 +93,7 @@ function tick(state: Session, now: number): Session {
   const results = state.results.map((result, i) => result === 'pending' && beat > i + timingWindow ? 'miss' as const : result)
   const complete = beat >= state.notes.length
   return { ...state, elapsed, results, index: Math.max(0, Math.min(state.notes.length - 1, Math.floor(beat + timingWindow))),
-    status: complete ? 'complete' : 'running', feedback: complete ? '本轮完成，看看你的练习结果' : beat < 0 ? `预备 · ${Math.ceil(-beat)}` : state.feedback.startsWith('预备') ? '跟随播放轴，在节拍中弹奏' : state.feedback }
+    status: complete ? 'complete' : 'running', feedback: complete ? '本轮完成，看看你的练习结果' : beat < 0 ? '空白小节 · 等待第一拍' : state.feedback.startsWith('空白小节') ? '跟随播放轴，在节拍中弹奏' : state.feedback }
 }
 export function sessionReducer(state: Session, action: Action): Session {
   if (action.type === 'labels') return { ...state, config: { ...state.config, labels: action.visible } }
@@ -102,7 +102,7 @@ export function sessionReducer(state: Session, action: Action): Session {
   if (action.type === 'start') {
     if (Object.keys(state.held).length || state.status === 'complete') return state
     return { ...state, status: 'running', startedAt: action.now - state.elapsed,
-      feedback: state.mode === 'reading' ? '弹奏当前目标音符' : state.elapsed === 0 ? '预备 · 4' : '跟随播放轴，在节拍中弹奏' }
+      feedback: state.mode === 'reading' ? '弹奏当前目标音符' : state.elapsed === 0 ? '空白小节 · 等待第一拍' : '跟随播放轴，在节拍中弹奏' }
   }
   if (action.type === 'pause') {
     if (state.status !== 'running') return state
